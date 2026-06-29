@@ -1,4 +1,4 @@
-# ShopEase
+# Billcart
 
 ShopEase is a full-stack application for managing shop operations, built with modern web technologies.
 
