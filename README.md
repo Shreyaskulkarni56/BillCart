@@ -92,4 +92,3 @@ ShopEase is a full-stack application for managing shop operations, built with mo
 - `GET /api/sales/:id` - Get sale details
 - `POST /api/sales` - Create sale (Generate Invoice)
 - `GET /api/sales/today` - Get today's sales
-- `Shreyas`
