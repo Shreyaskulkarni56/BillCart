@@ -111,12 +111,24 @@
 }
 
 @layer components {
+  .page-container {
+    @apply p-4 sm:p-6 md:p-8;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto -mx-px;
+  }
+
   .stat-card {
-    @apply bg-card rounded-lg border shadow-sm p-5 transition-all hover:shadow-md;
+    @apply bg-card rounded-lg border shadow-sm p-4 sm:p-5 transition-all hover:shadow-md;
   }
 
   .stat-value {
-    @apply text-3xl font-bold text-foreground;
+    @apply text-2xl sm:text-3xl font-bold text-foreground;
   }
 
   .stat-label {
@@ -128,11 +140,11 @@
   }
 
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 text-sidebar-foreground rounded-lg transition-colors hover:bg-sidebar-accent cursor-pointer;
+    @apply flex items-center gap-3 px-4 py-3 text-sidebar-foreground rounded-lg transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer;
   }
 
   .nav-item-active {
-    @apply bg-sidebar-accent text-sidebar-primary font-medium;
+    @apply bg-sidebar-primary text-sidebar-primary-foreground font-medium;
   }
 
   .low-stock-badge {

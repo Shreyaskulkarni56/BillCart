@@ -81,20 +81,20 @@ const Billing: React.FC = () => {
   };
 
   return (
-    <div className="p-8 h-full">
+    <div className="page-container h-full">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Billing</h1>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Billing</h1>
         <p className="text-muted-foreground">Create new invoice and manage orders</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:h-[calc(100%-4rem)]">
         {/* Product Search Section */}
-        <div className="lg:col-span-2 table-container flex flex-col">
+        <div className="lg:col-span-2 table-container flex flex-col min-h-[300px] lg:min-h-0">
           {/* Customer Selection */}
-          <div className="p-4 border-b bg-muted/30">
-            <div className="flex items-center gap-4">
-              <User className="w-5 h-5 text-muted-foreground" />
+          <div className="p-3 sm:p-4 border-b bg-muted/30">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <User className="w-5 h-5 text-muted-foreground shrink-0" />
               <Select
                 value={selectedCustomer?.id || ""}
                 onValueChange={(value) => {
@@ -102,7 +102,7 @@ const Billing: React.FC = () => {
                   setSelectedCustomer(customer || null);
                 }}
               >
-                <SelectTrigger className="w-full max-w-sm">
+                <SelectTrigger className="w-full sm:max-w-sm">
                   <SelectValue placeholder="Select Customer" />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,7 +117,7 @@ const Billing: React.FC = () => {
           </div>
 
           {/* Search */}
-          <div className="p-4 border-b">
+          <div className="p-3 sm:p-4 border-b">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -130,26 +130,26 @@ const Billing: React.FC = () => {
           </div>
 
           {/* Products List */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full">
+          <div className="flex-1 overflow-auto table-scroll">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-muted-foreground">Product</th>
-                  <th className="text-center p-4 font-semibold text-muted-foreground">Stock</th>
-                  <th className="text-right p-4 font-semibold text-muted-foreground">MRP</th>
-                  <th className="text-right p-4 font-semibold text-muted-foreground">Price</th>
-                  <th className="text-center p-4 font-semibold text-muted-foreground">Qty</th>
-                  <th className="text-center p-4 font-semibold text-muted-foreground">Action</th>
+                  <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Product</th>
+                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Stock</th>
+                  <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">MRP</th>
+                  <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
+                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Qty</th>
+                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-muted/30">
-                    <td className="p-4">
-                      <p className="font-medium text-foreground">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">{product.sku} • {product.category}</p>
+                    <td className="p-3 sm:p-4">
+                      <p className="font-medium text-foreground text-sm sm:text-base">{product.name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">{product.sku} • {product.category}</p>
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 sm:p-4 text-center">
                       <span
                         className={
                           product.stock === 0
@@ -162,9 +162,9 @@ const Billing: React.FC = () => {
                         {product.stock} {product.unit}
                       </span>
                     </td>
-                    <td className="p-4 text-right text-muted-foreground">₹{product.mrp ? product.mrp.toFixed(2) : '-'}</td>
-                    <td className="p-4 text-right font-medium">₹{product.price.toFixed(2)}</td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4 text-right text-muted-foreground hidden sm:table-cell">₹{product.mrp ? product.mrp.toFixed(2) : '-'}</td>
+                    <td className="p-3 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
+                    <td className="p-3 sm:p-4">
                       <Input
                         type="number"
                         min={1}
@@ -180,14 +180,15 @@ const Billing: React.FC = () => {
                         disabled={product.stock === 0}
                       />
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 sm:p-4 text-center">
                       <Button
                         size="sm"
                         onClick={() => handleAddToCart(product)}
                         disabled={product.stock === 0}
+                        className="h-8 px-2 sm:px-3"
                       >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
+                        <Plus className="w-4 h-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Add</span>
                       </Button>
                     </td>
                   </tr>
@@ -198,8 +199,8 @@ const Billing: React.FC = () => {
         </div>
 
         {/* Cart Section */}
-        <div className="table-container flex flex-col">
-          <div className="p-4 border-b bg-primary/5">
+        <div className="table-container flex flex-col min-h-[280px] lg:min-h-0">
+          <div className="p-3 sm:p-4 border-b bg-primary/5">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5 text-primary" />
               <h2 className="font-semibold text-foreground">Current Bill</h2>

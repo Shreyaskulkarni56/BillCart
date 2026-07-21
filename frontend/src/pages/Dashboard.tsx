@@ -23,15 +23,15 @@ const Dashboard: React.FC = () => {
   const outOfStock = products.filter((p) => p.stock === 0).length;
 
   return (
-    <div className="p-8">
+    <div className="page-container">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground">Welcome back! Here's your store overview.</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 md:mb-8">
         {/* Today's Sales */}
         <div className="stat-card">
           <div className="flex items-center justify-between mb-4">
@@ -99,10 +99,10 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Low Stock Items */}
         <div className="table-container">
-          <div className="p-5 border-b">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-b">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Low Stock Alerts</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-foreground">Low Stock Alerts</h2>
                 <p className="text-sm text-muted-foreground">Products that need restocking</p>
               </div>
               <Link to="/products">
@@ -145,10 +145,10 @@ const Dashboard: React.FC = () => {
 
         {/* Recent Transactions */}
         <div className="table-container">
-          <div className="p-5 border-b">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-b">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Recent Transactions</h2>
+                <h2 className="text-base sm:text-lg font-semibold text-foreground">Recent Transactions</h2>
                 <p className="text-sm text-muted-foreground">Latest sales activity</p>
               </div>
               <Link to="/reports">
@@ -185,21 +185,21 @@ const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-4">
-          <Link to="/billing">
-            <Button size="lg" className="h-14 px-6">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+          <Link to="/billing" className="w-full sm:w-auto">
+            <Button size="lg" className="h-12 sm:h-14 px-6 w-full sm:w-auto">
               <Receipt className="w-5 h-5 mr-2" />
               New Bill
             </Button>
           </Link>
-          <Link to="/products">
-            <Button variant="outline" size="lg" className="h-14 px-6">
+          <Link to="/products" className="w-full sm:w-auto">
+            <Button variant="outline" size="lg" className="h-12 sm:h-14 px-6 w-full sm:w-auto">
               <Package className="w-5 h-5 mr-2" />
               Add Product
             </Button>
           </Link>
-          <Link to="/customers">
-            <Button variant="outline" size="lg" className="h-14 px-6">
+          <Link to="/customers" className="w-full sm:w-auto">
+            <Button variant="outline" size="lg" className="h-12 sm:h-14 px-6 w-full sm:w-auto">
               <Users className="w-5 h-5 mr-2" />
               Add Customer
             </Button>

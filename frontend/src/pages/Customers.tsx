@@ -81,22 +81,22 @@ const Customers: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="page-container">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customers</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Customers</h1>
           <p className="text-muted-foreground">Manage your customer database</p>
         </div>
-        <Button size="lg" onClick={() => handleOpenModal()}>
+        <Button size="lg" onClick={() => handleOpenModal()} className="w-full sm:w-auto shrink-0">
           <Plus className="w-5 h-5 mr-2" />
           Add Customer
         </Button>
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
+        <div className="relative flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             placeholder="Search by name, phone, or email..."
@@ -190,7 +190,7 @@ const Customers: React.FC = () => {
 
       {/* Add/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingCustomer ? "Edit Customer" : "Add New Customer"}
@@ -208,7 +208,7 @@ const Customers: React.FC = () => {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
@@ -242,7 +242,7 @@ const Customers: React.FC = () => {
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="balance">Credit Balance (₹)</Label>
                 <Input

@@ -716,16 +716,17 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-6xl max-h-[95vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+          <DialogTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="flex items-center gap-2">
-              <span className="text-lg font-bold">GST Tax Invoice</span>
+              <span className="text-base sm:text-lg font-bold">GST Tax Invoice</span>
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsEditingAddress(!isEditingAddress)}
+              className="w-full sm:w-auto"
             >
               <Edit2 className="w-3 h-3 mr-1" />
               {isEditingAddress ? "Done" : "Edit Details"}

@@ -118,22 +118,22 @@ const Products: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="page-container">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Products</h1>
           <p className="text-muted-foreground">Manage your inventory</p>
         </div>
-        <Button size="lg" onClick={() => handleOpenModal()}>
+        <Button size="lg" onClick={() => handleOpenModal()} className="w-full sm:w-auto shrink-0">
           <Plus className="w-5 h-5 mr-2" />
           Add Product
         </Button>
       </div>
 
       {/* Search and Stats */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             placeholder="Search by name, SKU, or category..."
@@ -142,7 +142,7 @@ const Products: React.FC = () => {
             className="pl-10"
           />
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-2 sm:gap-4 text-sm">
           <div className="px-3 py-1.5 bg-card rounded-lg border">
             <span className="text-muted-foreground">Total: </span>
             <span className="font-semibold">{products.length}</span>
@@ -206,22 +206,22 @@ const Products: React.FC = () => {
       )}
 
       {/* Products Table */}
-      <div className="table-container">
-        <table className="w-full">
+      <div className="table-container table-scroll">
+        <table className="w-full min-w-[900px]">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-4 font-semibold text-muted-foreground">SKU</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Product Name</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Batch No</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">Expiry</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">HSN</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Category</th>
-              <th className="text-right p-4 font-semibold text-muted-foreground">MRP</th>
-              <th className="text-right p-4 font-semibold text-muted-foreground">Price</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">GST%</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">Stock</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">Status</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">Actions</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">SKU</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Product Name</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">Batch No</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Expiry</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">HSN</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Category</th>
+              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">MRP</th>
+              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">GST%</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Stock</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Status</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -239,16 +239,17 @@ const Products: React.FC = () => {
 
                 return (
                   <tr key={product.id} className="hover:bg-muted/30">
-                    <td className="p-4 font-mono text-sm text-muted-foreground">
+                    <td className="p-3 sm:p-4 font-mono text-xs sm:text-sm text-muted-foreground">
                       {product.sku}
                     </td>
-                    <td className="p-4">
-                      <p className="font-medium text-foreground">{product.name}</p>
+                    <td className="p-3 sm:p-4">
+                      <p className="font-medium text-foreground text-sm sm:text-base">{product.name}</p>
+                      <p className="text-xs text-muted-foreground sm:hidden">{product.category}</p>
                     </td>
-                    <td className="p-4 font-mono text-sm text-muted-foreground">
+                    <td className="p-3 sm:p-4 font-mono text-sm text-muted-foreground hidden md:table-cell">
                       {product.batchNo || '-'}
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 sm:p-4 text-center hidden lg:table-cell">
                       {product.expiryDate ? (
                         <div className="flex flex-col items-center">
                           <span className={`text-xs font-medium ${expiryStatus === 'expired' ? 'text-destructive' :
@@ -272,15 +273,15 @@ const Products: React.FC = () => {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="p-4 text-muted-foreground">{product.hsnCode || '-'}</td>
-                    <td className="p-4 text-muted-foreground">{product.category}</td>
-                    <td className="p-4 text-right font-medium">₹{(product.mrp || product.price).toFixed(2)}</td>
-                    <td className="p-4 text-right font-medium">₹{product.price.toFixed(2)}</td>
-                    <td className="p-4 text-center text-muted-foreground">{product.gstRate || 12}%</td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 sm:p-4 text-muted-foreground hidden lg:table-cell">{product.hsnCode || '-'}</td>
+                    <td className="p-3 sm:p-4 text-muted-foreground hidden sm:table-cell">{product.category}</td>
+                    <td className="p-3 sm:p-4 text-right font-medium hidden md:table-cell">₹{(product.mrp || product.price).toFixed(2)}</td>
+                    <td className="p-3 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
+                    <td className="p-3 sm:p-4 text-center text-muted-foreground hidden md:table-cell">{product.gstRate || 12}%</td>
+                    <td className="p-3 sm:p-4 text-center text-sm">
                       {product.stock} {product.unit}
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 sm:p-4 text-center hidden sm:table-cell">
                       <span
                         className={
                           product.stock === 0
@@ -297,7 +298,7 @@ const Products: React.FC = () => {
                             : "In Stock"}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="ghost"
@@ -326,15 +327,15 @@ const Products: React.FC = () => {
 
       {/* Add/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? "Edit Product" : "Add New Product"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="col-span-1 sm:col-span-2 md:col-span-3">
                 <Label htmlFor="name">Product Name</Label>
                 <Input
                   id="name"

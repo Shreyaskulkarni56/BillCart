@@ -72,15 +72,15 @@ const Reports: React.FC = () => {
   const totalTax = sales.reduce((sum, sale) => sum + sale.tax, 0);
 
   return (
-    <div className="p-8">
+    <div className="page-container">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Reports</h1>
           <p className="text-muted-foreground">Sales analytics and insights</p>
         </div>
         <Select value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <CalendarDays className="w-4 h-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
@@ -92,7 +92,7 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 md:mb-8">
         <div className="stat-card">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -137,8 +137,8 @@ const Reports: React.FC = () => {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Sales Trend */}
-        <div className="table-container p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Sales Trend</h3>
+        <div className="table-container p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">Sales Trend</h3>
           {dailyData.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
               No sales data available
@@ -170,8 +170,8 @@ const Reports: React.FC = () => {
         </div>
 
         {/* Sales by Category */}
-        <div className="table-container p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Sales by Category</h3>
+        <div className="table-container p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">Sales by Category</h3>
           {categoryData.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
               No category data available
@@ -210,20 +210,20 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Recent Sales Table */}
-      <div className="table-container">
-        <div className="p-5 border-b">
-          <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
+      <div className="table-container table-scroll">
+        <div className="p-4 sm:p-5 border-b">
+          <h3 className="text-base sm:text-lg font-semibold text-foreground">Recent Transactions</h3>
         </div>
-        <table className="w-full">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Invoice #</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Date</th>
-              <th className="text-left p-4 font-semibold text-muted-foreground">Customer</th>
-              <th className="text-center p-4 font-semibold text-muted-foreground">Items</th>
-              <th className="text-right p-4 font-semibold text-muted-foreground">Subtotal</th>
-              <th className="text-right p-4 font-semibold text-muted-foreground">Tax</th>
-              <th className="text-right p-4 font-semibold text-muted-foreground">Net Amount</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Invoice #</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Date</th>
+              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Customer</th>
+              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">Items</th>
+              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Subtotal</th>
+              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Tax</th>
+              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Net Amount</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -237,15 +237,18 @@ const Reports: React.FC = () => {
             ) : (
               sales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-muted/30">
-                  <td className="p-4 font-mono font-medium text-primary">{sale.id}</td>
-                  <td className="p-4 text-muted-foreground">{sale.date}</td>
-                  <td className="p-4 font-medium">{sale.customerName}</td>
-                  <td className="p-4 text-center">{sale.items.length}</td>
-                  <td className="p-4 text-right">₹{sale.subtotal.toFixed(2)}</td>
-                  <td className="p-4 text-right text-muted-foreground">
+                  <td className="p-3 sm:p-4 font-mono font-medium text-primary text-sm">{sale.id}</td>
+                  <td className="p-3 sm:p-4 text-muted-foreground text-sm hidden sm:table-cell">{sale.date}</td>
+                  <td className="p-3 sm:p-4 font-medium text-sm">
+                    {sale.customerName}
+                    <p className="text-xs text-muted-foreground sm:hidden">{sale.date}</p>
+                  </td>
+                  <td className="p-3 sm:p-4 text-center hidden md:table-cell">{sale.items.length}</td>
+                  <td className="p-3 sm:p-4 text-right hidden lg:table-cell">₹{sale.subtotal.toFixed(2)}</td>
+                  <td className="p-3 sm:p-4 text-right text-muted-foreground hidden lg:table-cell">
                     ₹{sale.tax.toFixed(2)}
                   </td>
-                  <td className="p-4 text-right font-semibold">₹{sale.total.toFixed(2)}</td>
+                  <td className="p-3 sm:p-4 text-right font-semibold text-sm sm:text-base">₹{sale.total.toFixed(2)}</td>
                 </tr>
               ))
             )}

@@ -17,7 +17,19 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+
+const allowedOrigins = [
+    'http://localhost:8080',
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
+app.use(
+    cors({
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+        credentials: true,
+    })
+);
 app.use(helmet());
 app.use(morgan('dev'));
 
