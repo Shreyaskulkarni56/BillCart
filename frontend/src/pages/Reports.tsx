@@ -32,7 +32,7 @@ import { Sale } from "../types";
 const COLORS = ["#2563eb", "#16a34a", "#ea580c", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 const Reports: React.FC = () => {
-  const { sales, products, customers } = useApp();
+  const { sales, products, customers, updateSaleDate } = useApp();
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: undefined,
@@ -316,6 +316,12 @@ const Reports: React.FC = () => {
           isReadOnly={true}
           pastInvoiceNo={selectedSale.invoiceNo}
           pastDate={selectedSale.date}
+          onUpdateDate={(newDate) => {
+            if (selectedSale.id) {
+              updateSaleDate(selectedSale.id, newDate);
+              setSelectedSale({ ...selectedSale, date: newDate });
+            }
+          }}
         />
       )}
     </div>

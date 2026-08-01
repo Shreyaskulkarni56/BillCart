@@ -115,3 +115,24 @@ export const getTodaysSales = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+export const updateSale = async (req: Request, res: Response) => {
+    try {
+        const { date } = req.body;
+        const sale = await Sale.findById(req.params.id);
+
+        if (sale) {
+            if (date) {
+                sale.date = new Date(date);
+            }
+            // You can also add more fields to update here if needed in the future
+
+            const updatedSale = await sale.save();
+            res.json(updatedSale);
+        } else {
+            res.status(404).json({ message: 'Sale not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+};

@@ -77,6 +77,10 @@ export const saleApi = {
         const response = await api.get<Sale>(`/sales/${id}`);
         return response.data;
     },
+    update: async (id: string, saleData: Partial<Sale>) => {
+        const response = await api.put<Sale>(`/sales/${id}`, saleData);
+        return response.data;
+    },
 };
 
 export const settingsApi = {

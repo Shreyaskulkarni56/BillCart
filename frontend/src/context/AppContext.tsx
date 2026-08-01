@@ -30,6 +30,7 @@ interface AppContextType {
   updateCartItemQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   generateInvoice: (discount: number) => Promise<Sale | null>;
+  updateSaleDate: (id: string, date: string) => Promise<void>;
   getTodaysSales: () => Sale[];
   getLowStockProducts: () => Product[];
 }
@@ -232,15 +233,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
 
-    // Calculate tax per item to match InvoiceDialog logic
-    // Formula: Sum of (Item Total * Item GST Rate)
-    // Note: InvoiceDialog calculates tax on discounted taxable value.
-    // So distinct tax = (ItemTotal * (1 - discount/100)) * (ItemGst/100)
-
-
-
     const totalTax = cart.reduce((sum, item) => {
-      const itemGst = item.gstRate || 5; // Match InvoiceDialog default 5
+      const itemGst = item.gstRate || 5; 
       const discountedItemTotal = item.total * (1 - discount / 100);
       return sum + Math.round((discountedItemTotal * (itemGst / 100)) * 100) / 100;
     }, 0);
@@ -258,7 +252,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         total
       });
 
-      // Refresh data to get updated stock
       await fetchData();
 
       clearCart();
@@ -275,6 +268,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         variant: "destructive",
       });
       return null;
+    }
+  };
+
+  const updateSaleDate = async (id: string, date: string) => {
+    try {
+      const updatedSale = await saleApi.update(id, { date });
+      setSales(sales.map((s) => (s.id === id ? updatedSale : s)));
+      toast({ title: "Sale Updated", description: "The transaction date has been updated." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update transaction date.", variant: "destructive" });
     }
   };
 
@@ -312,6 +315,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateCartItemQuantity,
         clearCart,
         generateInvoice,
+        updateSaleDate,
         getTodaysSales,
         getLowStockProducts,
       }}

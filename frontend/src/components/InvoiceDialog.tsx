@@ -17,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { Printer, Download, Plus, Minus, Trash2, Edit2 } from "lucide-react";
 import { BillItem, Customer } from "../types";
 import { useApp } from "../context/AppContext";
@@ -43,6 +46,7 @@ interface InvoiceDialogProps {
   isReadOnly?: boolean;
   pastInvoiceNo?: string;
   pastDate?: string;
+  onUpdateDate?: (date: string) => void;
 }
 
 interface ShopInfo {
@@ -103,6 +107,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
   isReadOnly = false,
   pastInvoiceNo,
   pastDate,
+  onUpdateDate,
 }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
@@ -793,7 +798,31 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             </div>
             <div className="p-2 border-r border-foreground">
               <span className="font-bold">Invoice Date:</span>
-              <div>{currentDate}</div>
+              <div>
+                {isReadOnly && onUpdateDate && pastDate ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-6 mt-1 text-xs px-2 py-0 border-muted-foreground w-full justify-start text-left font-normal bg-transparent text-foreground hover:bg-muted/50">
+                        {currentDate}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={new Date(pastDate)}
+                        onSelect={(date) => {
+                          if (date) {
+                            onUpdateDate(date.toISOString());
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  currentDate
+                )}
+              </div>
             </div>
             <div className="p-2">
               <span className="font-bold">Payment Mode:</span>
