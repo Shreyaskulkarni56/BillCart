@@ -4,9 +4,11 @@ import {
   Customer,
   Sale,
   BillItem,
-} from "../data/dummyData";
-import { productApi, customerApi, saleApi } from "../services/api";
+} from "../types";
+import { productApi, customerApi, saleApi, settingsApi } from "../services/api";
 import { toast } from "@/hooks/use-toast";
+
+// ... existing code ... (ignoring this replace because I can just do it line by line)
 
 interface AppContextType {
   products: Product[];
@@ -14,6 +16,8 @@ interface AppContextType {
   sales: Sale[];
   cart: BillItem[];
   selectedCustomer: Customer | null;
+  settings: any;
+  updateSettings: (settings: any) => Promise<void>;
   addProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
@@ -25,7 +29,7 @@ interface AppContextType {
   removeFromCart: (productId: string) => void;
   updateCartItemQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  generateInvoice: (discount: number, gstRate: number) => Promise<Sale | null>;
+  generateInvoice: (discount: number) => Promise<Sale | null>;
   getTodaysSales: () => Sale[];
   getLowStockProducts: () => Product[];
 }
@@ -38,6 +42,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [sales, setSales] = useState<Sale[]>([]);
   const [cart, setCart] = useState<BillItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [settings, setSettingsState] = useState<any>(null);
 
   // Load initial data
   React.useEffect(() => {
@@ -46,20 +51,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const fetchData = async () => {
     try {
-      const [productsData, customersData, salesData] = await Promise.all([
+      const [productsData, customersData, salesData, settingsData] = await Promise.all([
         productApi.getAll(),
         customerApi.getAll(),
         saleApi.getAll(),
+        settingsApi.get(),
       ]);
       setProducts(productsData);
       setCustomers(customersData);
       setSales(salesData);
+      setSettingsState(settingsData);
     } catch (error) {
       toast({
         title: "Error Loading Data",
         description: "Failed to fetch data from server.",
         variant: "destructive",
       });
+    }
+  };
+
+  const updateSettings = async (settingsData: any) => {
+    try {
+      const updated = await settingsApi.update(settingsData);
+      setSettingsState(updated);
+      toast({ title: "Settings Updated", description: "Your settings have been saved successfully." });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update settings.", variant: "destructive" });
     }
   };
 
@@ -98,8 +115,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const newCustomer = await customerApi.create(customer);
       setCustomers([...customers, newCustomer]);
       toast({ title: "Customer Added", description: `${customer.name} has been added.` });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to add customer.", variant: "destructive" });
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to add customer.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -108,8 +126,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const updated = await customerApi.update(customer.id, customer);
       setCustomers(customers.map((c) => (c.id === customer.id ? updated : c)));
       toast({ title: "Customer Updated", description: `${customer.name} has been updated.` });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to update customer.", variant: "destructive" });
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to update customer.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -192,7 +211,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSelectedCustomer(null);
   };
 
-  const generateInvoice = async (discount: number, gstRate: number): Promise<Sale | null> => {
+  const generateInvoice = async (discount: number): Promise<Sale | null> => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -221,9 +240,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 
     const totalTax = cart.reduce((sum, item) => {
-      const itemGst = item.gstRate || 18; // Default to 18 if missing
+      const itemGst = item.gstRate || 5; // Match InvoiceDialog default 5
       const discountedItemTotal = item.total * (1 - discount / 100);
-      return sum + (discountedItemTotal * (itemGst / 100));
+      return sum + Math.round((discountedItemTotal * (itemGst / 100)) * 100) / 100;
     }, 0);
 
     const discountAmount = (subtotal * discount) / 100;
@@ -279,6 +298,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         sales,
         cart,
         selectedCustomer,
+        settings,
+        updateSettings,
         addProduct,
         updateProduct,
         deleteProduct,

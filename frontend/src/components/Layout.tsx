@@ -8,6 +8,7 @@ import {
   BarChart3,
   Store,
   Menu,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import {
   Sheet,
@@ -27,6 +28,7 @@ const navItems = [
   { path: "/products", icon: Package, label: "Products" },
   { path: "/customers", icon: Users, label: "Customers" },
   { path: "/reports", icon: BarChart3, label: "Reports" },
+  { path: "/profile", icon: SettingsIcon, label: "Profile" },
 ];
 
 const Logo: React.FC<{ compact?: boolean }> = ({ compact }) => (
@@ -37,7 +39,7 @@ const Logo: React.FC<{ compact?: boolean }> = ({ compact }) => (
     {!compact && (
       <div className="min-w-0">
         <h1 className="text-lg font-bold text-sidebar-foreground leading-tight">
-          SRI LAKSHMI NARAYANA AYURVEDA
+          LAKSHMI AYURVEDA Distributors
         </h1>
         <p className="text-xs text-sidebar-foreground/60">Inventory & Billing</p>
       </div>
@@ -155,11 +157,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 min-w-0 flex-1 transition-colors ${
-                  isActive
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 min-w-0 flex-1 transition-colors ${isActive
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? "text-primary" : ""}`} />
                 <span className="text-[10px] font-medium truncate max-w-full px-0.5">

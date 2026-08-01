@@ -21,17 +21,36 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { CalendarDays, TrendingUp, Receipt, IndianRupee } from "lucide-react";
+import { CalendarDays, TrendingUp, Receipt, IndianRupee, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { DateRange } from "react-day-picker";
+import InvoiceDialog from "@/components/InvoiceDialog";
+import { Sale } from "../types";
 
 const COLORS = ["#2563eb", "#16a34a", "#ea580c", "#8b5cf6", "#ec4899", "#06b6d4"];
 
 const Reports: React.FC = () => {
-  const { sales, products } = useApp();
+  const { sales, products, customers } = useApp();
   const [period, setPeriod] = useState<"daily" | "monthly">("daily");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+
+  const filteredSales = sales.filter((sale) => {
+    if (!dateRange?.from) return true;
+    const saleDate = new Date(sale.date);
+    const start = startOfDay(dateRange.from);
+    const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+    return saleDate >= start && saleDate <= end;
+  });
 
   // Calculate sales by date
-  const salesByDate = sales.reduce((acc, sale) => {
-    const date = sale.date;
+  const salesByDate = filteredSales.reduce((acc, sale) => {
+    const date = new Date(sale.date).toISOString().split('T')[0];
     if (!acc[date]) {
       acc[date] = { date, total: 0, count: 0 };
     }
@@ -46,7 +65,7 @@ const Reports: React.FC = () => {
     .reverse();
 
   // Calculate sales by category
-  const salesByCategory = sales.reduce((acc, sale) => {
+  const salesByCategory = filteredSales.reduce((acc, sale) => {
     sale.items.forEach((item) => {
       const product = products.find((p) => p.id === item.productId);
       if (product) {
@@ -66,10 +85,10 @@ const Reports: React.FC = () => {
   }));
 
   // Summary stats
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalTransactions = sales.length;
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalTransactions = filteredSales.length;
   const avgTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-  const totalTax = sales.reduce((sum, sale) => sum + sale.tax, 0);
+  const totalTax = filteredSales.reduce((sum, sale) => sum + sale.tax, 0);
 
   return (
     <div className="page-container">
@@ -79,16 +98,41 @@ const Reports: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Reports</h1>
           <p className="text-muted-foreground">Sales analytics and insights</p>
         </div>
-        <Select value={period} onValueChange={(v) => setPeriod(v as "daily" | "monthly")}>
-          <SelectTrigger className="w-full sm:w-40">
-            <CalendarDays className="w-4 h-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="daily">Daily View</SelectItem>
-            <SelectItem value="monthly">Monthly View</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {dateRange?.from && (
+            <Button variant="ghost" size="icon" onClick={() => setDateRange(undefined)} title="Clear filter">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-64 justify-start text-left font-normal">
+                <CalendarDays className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(dateRange.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Filter by Date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -227,34 +271,53 @@ const Reports: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {sales.length === 0 ? (
+            {filteredSales.length === 0 ? (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-muted-foreground">
                   <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No transactions yet</p>
+                  <p>No transactions found</p>
                 </td>
               </tr>
             ) : (
-              sales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-muted/30">
-                  <td className="p-3 sm:p-4 font-mono font-medium text-primary text-sm">{sale.id}</td>
-                  <td className="p-3 sm:p-4 text-muted-foreground text-sm hidden sm:table-cell">{sale.date}</td>
+              filteredSales.map((sale) => (
+                <tr key={sale.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedSale(sale)}>
+                  <td className="p-3 sm:p-4 font-mono font-medium text-primary text-sm">{sale.invoiceNo}</td>
+                  <td className="p-3 sm:p-4 text-muted-foreground text-sm hidden sm:table-cell">{new Date(sale.date).toLocaleDateString()}</td>
                   <td className="p-3 sm:p-4 font-medium text-sm">
                     {sale.customerName}
-                    <p className="text-xs text-muted-foreground sm:hidden">{sale.date}</p>
+                    <p className="text-xs text-muted-foreground sm:hidden">{new Date(sale.date).toLocaleDateString()}</p>
                   </td>
                   <td className="p-3 sm:p-4 text-center hidden md:table-cell">{sale.items.length}</td>
                   <td className="p-3 sm:p-4 text-right hidden lg:table-cell">₹{sale.subtotal.toFixed(2)}</td>
                   <td className="p-3 sm:p-4 text-right text-muted-foreground hidden lg:table-cell">
                     ₹{sale.tax.toFixed(2)}
                   </td>
-                  <td className="p-3 sm:p-4 text-right font-semibold text-sm sm:text-base">₹{sale.total.toFixed(2)}</td>
+                  <td className="p-3 sm:p-4 text-right font-bold">
+                    ₹{sale.total.toFixed(2)}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+      
+      {selectedSale && (
+        <InvoiceDialog
+          isOpen={true}
+          onClose={() => setSelectedSale(null)}
+          customer={customers.find(c => c.id === selectedSale.customerId) || { name: selectedSale.customerName } as any}
+          items={selectedSale.items as any}
+          onUpdateItem={() => {}}
+          onRemoveItem={() => {}}
+          onConfirm={() => {}}
+          discount={0}
+          onDiscountChange={() => {}}
+          isReadOnly={true}
+          pastInvoiceNo={selectedSale.invoiceNo}
+          pastDate={selectedSale.date}
+        />
+      )}
     </div>
   );
 };

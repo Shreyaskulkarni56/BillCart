@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Search, Plus, Edit, Trash2, Users, Phone, Mail, MapPin } from "lucide-react";
-import { Customer } from "../data/dummyData";
+import { Customer } from "../types";
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -29,9 +29,9 @@ const Customers: React.FC = () => {
 
   const filteredCustomers = customers.filter(
     (customer) =>
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (customer.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.phone || "").includes(searchQuery) ||
+      (customer.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleOpenModal = (customer?: Customer) => {

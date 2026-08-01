@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Printer, Download, Plus, Minus, Trash2, Edit2 } from "lucide-react";
-import { BillItem, Customer, initialProducts } from "../data/dummyData";
+import { BillItem, Customer } from "../types";
+import { useApp } from "../context/AppContext";
 import jsPDF from "jspdf";
 
 interface EditableItem extends BillItem {
@@ -39,6 +40,9 @@ interface InvoiceDialogProps {
   onConfirm: () => void;
   discount: number;
   onDiscountChange: (discount: number) => void;
+  isReadOnly?: boolean;
+  pastInvoiceNo?: string;
+  pastDate?: string;
 }
 
 interface ShopInfo {
@@ -96,21 +100,38 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
   onConfirm,
   discount,
   onDiscountChange,
+  isReadOnly = false,
+  pastInvoiceNo,
+  pastDate,
 }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [paymentMode, setPaymentMode] = useState<string>("Cash");
+  const { products, settings, sales } = useApp();
 
-  const [shopInfo, setShopInfo] = useState<ShopInfo>({
-    name: "SHRI LAKSHMI NARAYANA AYURVEDA",
+  const [shopInfo, setShopInfo] = useState<ShopInfo>({ 
+    name: "LAKSHMI AYURVEDA Distributors",
     address: "123, Main Road, Near Bus Stand\nCity Name, District - 560001",
-    gstin: "29AABCU9603R1ZM",
+    gstin: "",
     phone: "+91 98765 43210",
     email: "shop@ayurveda.com",
     state: "Karnataka",
     stateCode: "29",
-  });
+  }); 
+
+  React.useEffect(() => {
+    if (settings) {
+      setShopInfo({
+        name: settings.shopName ?? shopInfo.name,
+        address: settings.address ?? shopInfo.address,
+        gstin: settings.gstin ?? shopInfo.gstin,
+        phone: settings.phone ?? shopInfo.phone,
+        email: settings.email ?? shopInfo.email,
+        state: settings.state ?? shopInfo.state,
+        stateCode: settings.stateCode ?? shopInfo.stateCode,
+      });
+    }
+  }, [settings]);
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: customer?.name || "Walk-in Customer",
@@ -130,14 +151,13 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
     }
   }, [customer]);
 
-  // Initialize editable items when items change
   React.useEffect(() => {
     const enriched = items.map(item => {
-      const product = initialProducts.find(p => p.id === item.productId);
+      const product = products.find(p => p.id === item.productId);
       return {
         ...item,
         hsnCode: item.hsnCode || product?.hsnCode || "3004",
-        gstRate: item.gstRate || product?.gstRate || 12,
+        gstRate: item.gstRate || product?.gstRate || 5,
         freeQty: item.freeQty || 0,
         batchNo: item.batchNo || `B${Date.now().toString().slice(-6)}`,
         mrp: item.mrp || item.price,
@@ -164,8 +184,8 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
   // Calculate tax breakdown per item
   const calculateItemTax = (item: EditableItem) => {
     const taxableAmount = item.total;
-    const cgstRate = (item.gstRate || 12) / 2;
-    const sgstRate = (item.gstRate || 12) / 2;
+    const cgstRate = (item.gstRate || 5) / 2;
+    const sgstRate = (item.gstRate || 5) / 2;
     const cgstAmount = taxableAmount * (cgstRate / 100);
     const sgstAmount = taxableAmount * (sgstRate / 100);
     return { taxableAmount, cgstRate, sgstRate, cgstAmount, sgstAmount };
@@ -177,16 +197,38 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
 
   const totalCgst = editableItems.reduce((sum, item) => {
     const discountedTotal = item.total - (item.total * discount / 100);
-    const cgstRate = (item.gstRate || 12) / 2;
-    return sum + (discountedTotal * cgstRate / 100);
+    const cgstRate = (item.gstRate || 5) / 2;
+    const taxAmount = Math.round((discountedTotal * cgstRate / 100) * 100) / 100;
+    return sum + taxAmount;
   }, 0);
 
   const totalSgst = totalCgst;
   const totalTax = totalCgst + totalSgst;
   const grandTotal = taxableAmount + totalTax;
 
-  const invoiceNumber = `INV/${new Date().getFullYear()}/${Date.now().toString().slice(-6)}`;
-  const currentDate = new Date().toLocaleDateString("en-IN", {
+  const prefix = settings?.invoicePrefix || "SLN";
+  
+  let nextInvoiceNumber = 1;
+  if (sales && sales.length > 0) {
+    const maxNum = sales.reduce((max, sale) => {
+      if (sale.invoiceNo) {
+        const numericPart = sale.invoiceNo.replace(/\D/g, '');
+        if (numericPart) {
+           return Math.max(max, parseInt(numericPart, 10));
+        }
+      }
+      return max;
+    }, 0);
+    nextInvoiceNumber = maxNum > 0 ? maxNum + 1 : sales.length + 1;
+  }
+  
+  
+  const invoiceNumber = pastInvoiceNo || `${prefix}${String(nextInvoiceNumber).padStart(4, '0')}`;
+  const currentDate = pastDate ? new Date(pastDate).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }) : new Date().toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -333,7 +375,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
               <div class="shop-name">${shopInfo.name}</div>
               <div class="shop-address">${shopInfo.address.replace(/\n/g, ', ')}</div>
               <div class="shop-address">Phone: ${shopInfo.phone} | Email: ${shopInfo.email}</div>
-              <div class="gstin">GSTIN: ${shopInfo.gstin}</div>
+              ${shopInfo.gstin ? `<div class="gstin">GSTIN: ${shopInfo.gstin}</div>` : ''}
             </div>
             
             <div class="invoice-title">TAX INVOICE</div>
@@ -391,8 +433,8 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                 ${editableItems.map((item, index) => {
       const tax = calculateItemTax(item);
       const discountedTaxable = item.total - (item.total * discount / 100);
-      const itemCgst = discountedTaxable * (tax.cgstRate / 100);
-      const itemSgst = discountedTaxable * (tax.sgstRate / 100);
+      const itemCgst = Math.round((discountedTaxable * (tax.cgstRate / 100)) * 100) / 100;
+      const itemSgst = Math.round((discountedTaxable * (tax.sgstRate / 100)) * 100) / 100;
       return `
                     <tr>
                       <td class="text-center">${index + 1}</td>
@@ -502,8 +544,10 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
     pdf.text(`Phone: ${shopInfo.phone} | Email: ${shopInfo.email}`, pageWidth / 2, yPos + 14, { align: "center" });
 
     // GSTIN
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`GSTIN: ${shopInfo.gstin}`, pageWidth / 2, yPos + 19, { align: "center" });
+    if (shopInfo.gstin) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`GSTIN: ${shopInfo.gstin}`, pageWidth / 2, yPos + 19, { align: "center" });
+    }
 
     yPos += 27;
 
@@ -722,89 +766,9 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             <span className="flex items-center gap-2">
               <span className="text-base sm:text-lg font-bold">GST Tax Invoice</span>
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditingAddress(!isEditingAddress)}
-              className="w-full sm:w-auto"
-            >
-              <Edit2 className="w-3 h-3 mr-1" />
-              {isEditingAddress ? "Done" : "Edit Details"}
-            </Button>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Editable Section */}
-        {isEditingAddress && (
-          <div className="grid md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border mb-4">
-            <div className="space-y-3">
-              <Label className="text-xs uppercase text-muted-foreground font-semibold">Shop Details</Label>
-              <Input
-                placeholder="Shop Name"
-                value={shopInfo.name}
-                onChange={(e) => setShopInfo({ ...shopInfo, name: e.target.value })}
-              />
-              <Textarea
-                placeholder="Address"
-                value={shopInfo.address}
-                onChange={(e) => setShopInfo({ ...shopInfo, address: e.target.value })}
-                rows={2}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="Phone"
-                  value={shopInfo.phone}
-                  onChange={(e) => setShopInfo({ ...shopInfo, phone: e.target.value })}
-                />
-                <Input
-                  placeholder="Email"
-                  value={shopInfo.email}
-                  onChange={(e) => setShopInfo({ ...shopInfo, email: e.target.value })}
-                />
-              </div>
-              <Input
-                placeholder="GSTIN"
-                value={shopInfo.gstin}
-                onChange={(e) => setShopInfo({ ...shopInfo, gstin: e.target.value })}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  placeholder="State"
-                  value={shopInfo.state}
-                  onChange={(e) => setShopInfo({ ...shopInfo, state: e.target.value })}
-                />
-                <Input
-                  placeholder="State Code"
-                  value={shopInfo.stateCode}
-                  onChange={(e) => setShopInfo({ ...shopInfo, stateCode: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <Label className="text-xs uppercase text-muted-foreground font-semibold">Customer Details</Label>
-              <Input
-                placeholder="Customer Name"
-                value={customerInfo.name}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-              />
-              <Input
-                placeholder="Address"
-                value={customerInfo.address}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-              />
-              <Input
-                placeholder="Phone"
-                value={customerInfo.phone}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-              />
-              <Input
-                placeholder="Customer GSTIN (optional)"
-                value={customerInfo.gstin}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, gstin: e.target.value })}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Invoice Preview */}
         <div ref={invoiceRef} className="bg-white border-2 border-foreground rounded-none text-foreground text-sm font-serif">
@@ -813,7 +777,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             <h1 className="text-xl font-bold uppercase tracking-wide">{shopInfo.name}</h1>
             <p className="text-xs mt-1">{shopInfo.address.replace(/\n/g, ', ')}</p>
             <p className="text-xs">Phone: {shopInfo.phone} | Email: {shopInfo.email}</p>
-            <p className="text-sm font-bold mt-1">GSTIN: {shopInfo.gstin}</p>
+            {shopInfo.gstin && <p className="text-sm font-bold mt-1">GSTIN: {shopInfo.gstin}</p>}
           </div>
 
           {/* Tax Invoice Title */}
@@ -890,109 +854,127 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                 {editableItems.map((item, index) => {
                   const tax = calculateItemTax(item);
                   const discountedTaxable = item.total - (item.total * discount / 100);
-                  const itemCgst = discountedTaxable * (tax.cgstRate / 100);
-                  const itemSgst = discountedTaxable * (tax.sgstRate / 100);
+                  const itemCgst = Math.round((discountedTaxable * (tax.cgstRate / 100)) * 100) / 100;
+                  const itemSgst = Math.round((discountedTaxable * (tax.sgstRate / 100)) * 100) / 100;
 
                   return (
                     <tr key={item.productId} className="hover:bg-muted/20">
                       <td className="border border-foreground p-1 text-center">{index + 1}</td>
                       <td className="border border-foreground p-1">
-                        <Input
-                          value={item.productName}
-                          onChange={(e) => updateItemField(item.productId, 'productName', e.target.value)}
-                          className="h-6 text-xs border-0 p-0 bg-transparent"
-                        />
+                        {isReadOnly ? <span className="text-xs">{item.productName}</span> : (
+                          <Input
+                            value={item.productName}
+                            onChange={(e) => updateItemField(item.productId, 'productName', e.target.value)}
+                            className="h-6 text-xs border-0 p-0 bg-transparent"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-center">
-                        <Input
-                          value={item.batchNo}
-                          onChange={(e) => updateItemField(item.productId, 'batchNo', e.target.value)}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-center w-20"
-                        />
+                        {isReadOnly ? <span className="text-xs">{item.batchNo}</span> : (
+                          <Input
+                            value={item.batchNo}
+                            onChange={(e) => updateItemField(item.productId, 'batchNo', e.target.value)}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-center w-20"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-center">
-                        <Input
-                          value={item.hsnCode}
-                          onChange={(e) => updateItemField(item.productId, 'hsnCode', e.target.value)}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-center w-14"
-                        />
+                        {isReadOnly ? <span className="text-xs">{item.hsnCode}</span> : (
+                          <Input
+                            value={item.hsnCode}
+                            onChange={(e) => updateItemField(item.productId, 'hsnCode', e.target.value)}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-center w-14"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.mrp}
-                          onChange={(e) => updateItemField(item.productId, 'mrp', Number(e.target.value))}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-right w-16"
-                        />
-                      </td>
-                      <td className="border border-foreground p-1 text-center">
-                        <div className="flex items-center justify-center gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => updateItemField(item.productId, 'quantity', Math.max(1, item.quantity - 1))}
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
+                        {isReadOnly ? <span className="text-xs">{item.mrp.toFixed(2)}</span> : (
                           <Input
                             type="number"
-                            value={item.quantity}
-                            onChange={(e) => updateItemField(item.productId, 'quantity', Math.max(1, Number(e.target.value)))}
-                            className="h-6 w-10 text-xs border-0 p-0 bg-transparent text-center"
+                            step="0.01"
+                            value={item.mrp}
+                            onChange={(e) => updateItemField(item.productId, 'mrp', Number(e.target.value))}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-right w-16"
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => updateItemField(item.productId, 'quantity', item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-center">
-                        <Input
-                          type="number"
-                          value={item.freeQty}
-                          onChange={(e) => updateItemField(item.productId, 'freeQty', Number(e.target.value))}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-center w-10"
-                        />
+                        {isReadOnly ? <span className="text-xs">{item.quantity}</span> : (
+                          <div className="flex items-center justify-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => updateItemField(item.productId, 'quantity', Math.max(1, item.quantity - 1))}
+                              disabled={item.quantity <= 1}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateItemField(item.productId, 'quantity', Math.max(1, Number(e.target.value)))}
+                              className="h-6 w-10 text-xs border-0 p-0 bg-transparent text-center"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => updateItemField(item.productId, 'quantity', item.quantity + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="border border-foreground p-1 text-center">
+                        {isReadOnly ? <span className="text-xs">{item.freeQty}</span> : (
+                          <Input
+                            type="number"
+                            value={item.freeQty}
+                            onChange={(e) => updateItemField(item.productId, 'freeQty', Number(e.target.value))}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-center w-10"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.price}
-                          onChange={(e) => updateItemField(item.productId, 'price', Number(e.target.value))}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-right w-16"
-                        />
+                        {isReadOnly ? <span className="text-xs">{item.price.toFixed(2)}</span> : (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.price}
+                            onChange={(e) => updateItemField(item.productId, 'price', Number(e.target.value))}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-right w-16"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-right font-medium">₹{item.total.toFixed(2)}</td>
                       <td className="border border-foreground p-1 text-right">₹{discountedTaxable.toFixed(2)}</td>
                       <td className="border border-foreground p-1 text-center">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={tax.cgstRate}
-                          onChange={(e) => updateItemField(item.productId, 'gstRate', Number(e.target.value) * 2)}
-                          className="h-6 text-xs border-0 p-0 bg-transparent text-center w-10"
-                        />
+                        {isReadOnly ? <span className="text-xs">{tax.cgstRate.toFixed(2)}</span> : (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={tax.cgstRate}
+                            onChange={(e) => updateItemField(item.productId, 'gstRate', Number(e.target.value) * 2)}
+                            className="h-6 text-xs border-0 p-0 bg-transparent text-center w-10"
+                          />
+                        )}
                       </td>
                       <td className="border border-foreground p-1 text-right">₹{itemCgst.toFixed(2)}</td>
                       <td className="border border-foreground p-1 text-center">{tax.sgstRate.toFixed(2)}%</td>
                       <td className="border border-foreground p-1 text-right">₹{itemSgst.toFixed(2)}</td>
                       <td className="border border-foreground p-1 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 text-destructive hover:text-destructive"
-                          onClick={() => onRemoveItem(item.productId)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {!isReadOnly && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-destructive hover:text-destructive"
+                            onClick={() => onRemoveItem(item.productId)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1018,14 +1000,16 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
               <div className="flex justify-between p-2 border-b border-muted-foreground/30">
                 <span>Discount:</span>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={discount}
-                    onChange={(e) => onDiscountChange(Number(e.target.value))}
-                    className="w-16 h-6 text-xs text-right"
-                  />
+                  {isReadOnly ? <span className="w-16 h-6 text-xs text-right">{discount}</span> : (
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discount}
+                      onChange={(e) => onDiscountChange(Number(e.target.value))}
+                      className="w-16 h-6 text-xs text-right"
+                    />
+                  )}
                   <span>%</span>
                   <span className="text-muted-foreground">(-₹{discountAmount.toFixed(2)})</span>
                 </div>
@@ -1079,9 +1063,11 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             <Download className="w-4 h-4 mr-2" />
             Download PDF
           </Button>
-          <Button onClick={onConfirm} className="bg-primary hover:bg-primary/90">
-            Confirm & Generate
-          </Button>
+          {!isReadOnly && (
+            <Button onClick={onConfirm} className="bg-primary hover:bg-primary/90">
+              Confirm & Generate
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

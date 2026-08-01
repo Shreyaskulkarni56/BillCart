@@ -15,8 +15,12 @@ export const createCustomer = async (req: Request, res: Response) => {
         const customer = new Customer(req.body);
         const createdCustomer = await customer.save();
         res.status(201).json(createdCustomer);
-    } catch (error) {
-        res.status(400).json({ message: 'Invalid customer data' });
+    } catch (error: any) {
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A customer with this phone number already exists' });
+        } else {
+            res.status(400).json({ message: error.message || 'Invalid customer data' });
+        }
     }
 };
 
@@ -30,8 +34,12 @@ export const updateCustomer = async (req: Request, res: Response) => {
         } else {
             res.status(404).json({ message: 'Customer not found' });
         }
-    } catch (error) {
-        res.status(400).json({ message: 'Invalid customer data' });
+    } catch (error: any) {
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A customer with this phone number already exists' });
+        } else {
+            res.status(400).json({ message: error.message || 'Invalid customer data' });
+        }
     }
 };
 

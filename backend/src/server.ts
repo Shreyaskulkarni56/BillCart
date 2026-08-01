@@ -8,6 +8,7 @@ import connectDB from './config/db';
 import productRoutes from './routes/productRoutes';
 import customerRoutes from './routes/customerRoutes';
 import saleRoutes from './routes/saleRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 
 
 // Connect to database
@@ -38,6 +39,7 @@ app.use(morgan('dev'));
 app.use('/api/products', productRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/', (req, res) => {
     res.send('API is running...');
@@ -48,3 +50,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
+// Trigger nodemon restart

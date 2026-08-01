@@ -40,18 +40,21 @@ const Billing: React.FC = () => {
   const [quantity, setQuantity] = useState<{ [key: string]: number }>({});
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [discount, setDiscount] = useState(0);
-  const [gstRate, setGstRate] = useState(18);
 
   const filteredProducts = products.filter(
     (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+      (product.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.sku || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = (subtotal * discount) / 100;
   const taxableAmount = subtotal - discountAmount;
-  const tax = taxableAmount * (gstRate / 100);
+  const tax = cart.reduce((sum, item) => {
+    const itemGst = item.gstRate || 5; // Match InvoiceDialog default 5
+    const discountedItemTotal = item.total * (1 - discount / 100);
+    return sum + Math.round((discountedItemTotal * (itemGst / 100)) * 100) / 100;
+  }, 0);
   const grandTotal = taxableAmount + tax;
 
   const handleAddToCart = (product: typeof products[0]) => {
@@ -73,7 +76,7 @@ const Billing: React.FC = () => {
   };
 
   const handleConfirmInvoice = async () => {
-    const invoice = await generateInvoice(discount, gstRate);
+    const invoice = await generateInvoice(discount);
     if (invoice) {
       setIsInvoiceOpen(false);
       setDiscount(0);
@@ -83,9 +86,27 @@ const Billing: React.FC = () => {
   return (
     <div className="page-container h-full">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Billing</h1>
-        <p className="text-muted-foreground">Create new invoice and manage orders</p>
+      <div className="flex items-start sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Billing</h1>
+          <p className="text-xs sm:text-base text-muted-foreground">Create new invoice and manage orders</p>
+        </div>
+        <Button 
+          onClick={() => {
+            if (window.innerWidth < 1024) {
+              document.getElementById('cart-section')?.scrollIntoView({ behavior: 'smooth' });
+            } else {
+              handleOpenInvoice();
+            }
+          }}
+          className="shrink-0"
+        >
+          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
+          <span className="hidden sm:inline">Cart</span>
+          <span className="ml-1.5 sm:ml-0 bg-primary-foreground text-primary text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded-full">
+            {cart.length}
+          </span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:h-[calc(100%-4rem)]">
@@ -131,25 +152,25 @@ const Billing: React.FC = () => {
 
           {/* Products List */}
           <div className="flex-1 overflow-auto table-scroll">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full lg:min-w-[640px]">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Product</th>
-                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Stock</th>
-                  <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">MRP</th>
-                  <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
-                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Qty</th>
-                  <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Action</th>
+                  <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Product</th>
+                  <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Stock</th>
+                  <th className="text-right p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">MRP</th>
+                  <th className="text-right p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
+                  <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Qty</th>
+                  <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-muted/30">
-                    <td className="p-3 sm:p-4">
-                      <p className="font-medium text-foreground text-sm sm:text-base">{product.name}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">{product.sku} • {product.category}</p>
+                    <td className="p-2 sm:p-4">
+                      <p className="font-medium text-foreground text-sm sm:text-base line-clamp-1">{product.name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{product.sku} <span className="hidden sm:inline">• {product.category}</span></p>
                     </td>
-                    <td className="p-3 sm:p-4 text-center">
+                    <td className="p-2 sm:p-4 text-center hidden sm:table-cell">
                       <span
                         className={
                           product.stock === 0
@@ -162,9 +183,9 @@ const Billing: React.FC = () => {
                         {product.stock} {product.unit}
                       </span>
                     </td>
-                    <td className="p-3 sm:p-4 text-right text-muted-foreground hidden sm:table-cell">₹{product.mrp ? product.mrp.toFixed(2) : '-'}</td>
-                    <td className="p-3 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
-                    <td className="p-3 sm:p-4">
+                    <td className="p-2 sm:p-4 text-right text-muted-foreground hidden sm:table-cell">₹{product.mrp ? product.mrp.toFixed(2) : '-'}</td>
+                    <td className="p-2 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
+                    <td className="p-2 sm:p-4">
                       <Input
                         type="number"
                         min={1}
@@ -176,16 +197,16 @@ const Billing: React.FC = () => {
                             [product.id]: parseInt(e.target.value) || 1,
                           })
                         }
-                        className="w-20 mx-auto text-center"
+                        className="w-14 sm:w-20 mx-auto text-center h-8 sm:h-10 px-1 sm:px-3 text-xs sm:text-sm"
                         disabled={product.stock === 0}
                       />
                     </td>
-                    <td className="p-3 sm:p-4 text-center">
+                    <td className="p-2 sm:p-4 text-center">
                       <Button
                         size="sm"
                         onClick={() => handleAddToCart(product)}
                         disabled={product.stock === 0}
-                        className="h-8 px-2 sm:px-3"
+                        className="h-8 w-8 sm:w-auto p-0 sm:px-3 mx-auto"
                       >
                         <Plus className="w-4 h-4 sm:mr-1" />
                         <span className="hidden sm:inline">Add</span>
@@ -199,7 +220,7 @@ const Billing: React.FC = () => {
         </div>
 
         {/* Cart Section */}
-        <div className="table-container flex flex-col min-h-[280px] lg:min-h-0">
+        <div id="cart-section" className="table-container flex flex-col min-h-[280px] lg:min-h-0">
           <div className="p-3 sm:p-4 border-b bg-primary/5">
             <div className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5 text-primary" />
@@ -279,22 +300,7 @@ const Billing: React.FC = () => {
             )}
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
-                GST Rate
-                <Select
-                  value={gstRate.toString()}
-                  onValueChange={(val) => setGstRate(Number(val))}
-                >
-                  <SelectTrigger className="w-[70px] h-7 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">0%</SelectItem>
-                    <SelectItem value="5">5%</SelectItem>
-                    <SelectItem value="12">12%</SelectItem>
-                    <SelectItem value="18">18%</SelectItem>
-                    <SelectItem value="28">28%</SelectItem>
-                  </SelectContent>
-                </Select>
+                Total Tax (GST)
               </span>
               <span className="font-medium">₹{tax.toFixed(2)}</span>
             </div>

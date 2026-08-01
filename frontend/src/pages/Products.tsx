@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Plus, Edit, Trash2, Package, AlertTriangle, Calendar } from "lucide-react";
-import { Product, categories, getExpiryStatus, getDaysUntilExpiry } from "../data/dummyData";
+import { Product, categories, getExpiryStatus, getDaysUntilExpiry } from "../types";
 
 const Products: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useApp();
@@ -46,9 +46,9 @@ const Products: React.FC = () => {
 
   const filteredProducts = products.filter(
     (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase())
+      (product.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.sku || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (product.category || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleOpenModal = (product?: Product) => {
@@ -65,7 +65,7 @@ const Products: React.FC = () => {
         sku: product.sku,
         batchNo: product.batchNo || "",
         hsnCode: product.hsnCode || "",
-        gstRate: product.gstRate || 12,
+        gstRate: product.gstRate || 5,
         expiryDate: product.expiryDate || "",
       });
     } else {
@@ -120,12 +120,16 @@ const Products: React.FC = () => {
   return (
     <div className="page-container">
       {/* Header */}
-      <div className="page-header">
+      <div className="flex items-start sm:items-center justify-between mb-6 gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Products</h1>
-          <p className="text-muted-foreground">Manage your inventory</p>
+          <p className="text-xs sm:text-base text-muted-foreground">Manage your inventory</p>
         </div>
-        <Button size="lg" onClick={() => handleOpenModal()} className="w-full sm:w-auto shrink-0">
+        <Button size="sm" onClick={() => handleOpenModal()} className="w-auto shrink-0 sm:hidden">
+          <Plus className="w-4 h-4 mr-1" />
+          Add
+        </Button>
+        <Button size="lg" onClick={() => handleOpenModal()} className="hidden sm:flex w-auto shrink-0">
           <Plus className="w-5 h-5 mr-2" />
           Add Product
         </Button>
@@ -207,21 +211,21 @@ const Products: React.FC = () => {
 
       {/* Products Table */}
       <div className="table-container table-scroll">
-        <table className="w-full min-w-[900px]">
+        <table className="w-full lg:min-w-[900px]">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">SKU</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Product Name</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">Batch No</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Expiry</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">HSN</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Category</th>
-              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">MRP</th>
-              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">GST%</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Stock</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Status</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Actions</th>
+              <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">SKU</th>
+              <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Product Name</th>
+              <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">Batch No</th>
+              <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Expiry</th>
+              <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">HSN</th>
+              <th className="text-left p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Category</th>
+              <th className="text-right p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">MRP</th>
+              <th className="text-right p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Price</th>
+              <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">GST%</th>
+              <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Stock</th>
+              <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Status</th>
+              <th className="text-center p-2 sm:p-4 font-semibold text-muted-foreground text-sm">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -239,17 +243,17 @@ const Products: React.FC = () => {
 
                 return (
                   <tr key={product.id} className="hover:bg-muted/30">
-                    <td className="p-3 sm:p-4 font-mono text-xs sm:text-sm text-muted-foreground">
+                    <td className="p-2 sm:p-4 font-mono text-xs sm:text-sm text-muted-foreground hidden sm:table-cell">
                       {product.sku}
                     </td>
-                    <td className="p-3 sm:p-4">
-                      <p className="font-medium text-foreground text-sm sm:text-base">{product.name}</p>
-                      <p className="text-xs text-muted-foreground sm:hidden">{product.category}</p>
+                    <td className="p-2 sm:p-4">
+                      <p className="font-medium text-foreground text-sm sm:text-base line-clamp-1">{product.name}</p>
+                      <p className="text-xs text-muted-foreground sm:hidden truncate">{product.category}</p>
                     </td>
-                    <td className="p-3 sm:p-4 font-mono text-sm text-muted-foreground hidden md:table-cell">
+                    <td className="p-2 sm:p-4 font-mono text-sm text-muted-foreground hidden md:table-cell">
                       {product.batchNo || '-'}
                     </td>
-                    <td className="p-3 sm:p-4 text-center hidden lg:table-cell">
+                    <td className="p-2 sm:p-4 text-center hidden lg:table-cell">
                       {product.expiryDate ? (
                         <div className="flex flex-col items-center">
                           <span className={`text-xs font-medium ${expiryStatus === 'expired' ? 'text-destructive' :
@@ -273,15 +277,15 @@ const Products: React.FC = () => {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="p-3 sm:p-4 text-muted-foreground hidden lg:table-cell">{product.hsnCode || '-'}</td>
-                    <td className="p-3 sm:p-4 text-muted-foreground hidden sm:table-cell">{product.category}</td>
-                    <td className="p-3 sm:p-4 text-right font-medium hidden md:table-cell">₹{(product.mrp || product.price).toFixed(2)}</td>
-                    <td className="p-3 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
-                    <td className="p-3 sm:p-4 text-center text-muted-foreground hidden md:table-cell">{product.gstRate || 12}%</td>
-                    <td className="p-3 sm:p-4 text-center text-sm">
-                      {product.stock} {product.unit}
+                    <td className="p-2 sm:p-4 text-muted-foreground hidden lg:table-cell">{product.hsnCode || '-'}</td>
+                    <td className="p-2 sm:p-4 text-muted-foreground hidden sm:table-cell">{product.category}</td>
+                    <td className="p-2 sm:p-4 text-right font-medium hidden md:table-cell">₹{(product.mrp || product.price).toFixed(2)}</td>
+                    <td className="p-2 sm:p-4 text-right font-medium text-sm sm:text-base">₹{product.price.toFixed(2)}</td>
+                    <td className="p-2 sm:p-4 text-center text-muted-foreground hidden md:table-cell">{product.gstRate || 5}%</td>
+                    <td className="p-2 sm:p-4 text-center text-sm">
+                      {product.stock} <span className="hidden sm:inline">{product.unit}</span>
                     </td>
-                    <td className="p-3 sm:p-4 text-center hidden sm:table-cell">
+                    <td className="p-2 sm:p-4 text-center hidden sm:table-cell">
                       <span
                         className={
                           product.stock === 0
@@ -298,11 +302,12 @@ const Products: React.FC = () => {
                             : "In Stock"}
                       </span>
                     </td>
-                    <td className="p-3 sm:p-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="p-2 sm:p-4">
+                      <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 sm:h-10 sm:w-10"
                           onClick={() => handleOpenModal(product)}
                         >
                           <Edit className="w-4 h-4" />
@@ -310,7 +315,7 @@ const Products: React.FC = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 w-8 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(product.id)}
                         >
                           <Trash2 className="w-4 h-4" />

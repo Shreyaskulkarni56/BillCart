@@ -30,9 +30,27 @@ export const createSale = async (req: Request, res: Response) => {
         }
 
         // 3. Create Sale
-        // Generate Invoice Number (Simple counter for now, real app needs better logic)
-        const count = await Sale.countDocuments();
-        const invoiceNo = `INV${String(count + 1).padStart(3, '0')}`;
+        // Generate Invoice Number
+        const settings = await mongoose.model('Settings').findOne() as any;
+        const prefix = settings?.invoicePrefix || 'SLN';
+        
+        // Find the sale with the highest invoice number (by sorting descending)
+        const lastSale = await Sale.findOne().sort({ createdAt: -1 });
+        let nextInvoiceNumber = 1;
+        
+        if (lastSale && lastSale.invoiceNo) {
+            // Extract the numeric part from the last invoice string
+            const numericPart = lastSale.invoiceNo.replace(/\D/g, '');
+            if (numericPart) {
+                nextInvoiceNumber = parseInt(numericPart, 10) + 1;
+            } else {
+                // Fallback to count if parsing fails
+                const count = await Sale.countDocuments();
+                nextInvoiceNumber = count + 1;
+            }
+        }
+        
+        const invoiceNo = `${prefix}${String(nextInvoiceNumber).padStart(4, '0')}`;
 
         const sale = new Sale({
             invoiceNo,

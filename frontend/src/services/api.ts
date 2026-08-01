@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Product, Customer, Sale, BillItem } from '../data/dummyData';
+import { Product, Customer, Sale, BillItem } from '../types';
 
 const API_URL =
   import.meta.env.VITE_API_URL || 
@@ -9,8 +9,8 @@ const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json',
-    },
-});
+    },  
+}); 
 
 export const productApi = {
     getAll: async () => {
@@ -77,6 +77,17 @@ export const saleApi = {
         const response = await api.get<Sale>(`/sales/${id}`);
         return response.data;
     },
+};
+
+export const settingsApi = {
+  get: async () => {
+    const response = await api.get('/settings');
+    return response.data;
+  },
+  update: async (data: any) => {
+    const response = await api.put('/settings', data);
+    return response.data;
+  }
 };
 
 export default api;

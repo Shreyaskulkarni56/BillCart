@@ -168,7 +168,7 @@ const Dashboard: React.FC = () => {
               sales.slice(0, 5).map((sale) => (
                 <div key={sale.id} className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{sale.id}</p>
+                    <p className="font-medium text-foreground">{sale.invoiceNo}</p>
                     <p className="text-sm text-muted-foreground">{sale.customerName}</p>
                   </div>
                   <div className="text-right">
