@@ -28,7 +28,7 @@ const navItems = [
   { path: "/products", icon: Package, label: "Products" },
   { path: "/customers", icon: Users, label: "Customers" },
   { path: "/reports", icon: BarChart3, label: "Reports" },
-  { path: "/profile", icon: SettingsIcon, label: "Profile" },
+  { path: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
 const Logo: React.FC<{ compact?: boolean }> = ({ compact }) => (

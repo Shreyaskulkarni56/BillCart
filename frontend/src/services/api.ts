@@ -91,6 +91,14 @@ export const settingsApi = {
   update: async (data: any) => {
     const response = await api.put('/settings', data);
     return response.data;
+  },
+  uploadLogo: async (logoUrl: string) => {
+    const response = await api.post('/settings/upload-logo', { logoUrl });
+    return response.data;
+  },
+  removeLogo: async () => {
+    const response = await api.delete('/settings/logo');
+    return response.data;
   }
 };
 

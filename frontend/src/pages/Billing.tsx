@@ -21,6 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import InvoiceDialog from "../components/InvoiceDialog";
+import { BillItem } from "../types";
 
 const Billing: React.FC = () => {
   const {
@@ -75,8 +76,8 @@ const Billing: React.FC = () => {
     setIsInvoiceOpen(true);
   };
 
-  const handleConfirmInvoice = async () => {
-    const invoice = await generateInvoice(discount);
+  const handleConfirmInvoice = async (customItems?: BillItem[]) => {
+    const invoice = await generateInvoice(discount, customItems);
     if (invoice) {
       setIsInvoiceOpen(false);
       setDiscount(0);

@@ -15,17 +15,19 @@ export const createSale = async (req: Request, res: Response) => {
             throw new Error('Customer not found');
         }
 
-        // 2. Check and Deduct Stock
-        // We need to re-verify stock for all items
+        // 2. Check and Deduct Stock (Quantity Billed + Free Quantity)
         for (const item of items) {
             const product = await Product.findById(item.productId);
             if (!product) {
-                throw new Error(`Product ${item.productName} not found`);
+                throw new Error(`Product ${item.productName || "item"} not found`);
             }
-            if (product.stock < item.quantity) {
-                throw new Error(`Insufficient stock for ${product.name}`);
+            const totalQuantityToDeduct = Number(item.quantity || 0) + Number(item.freeQty || 0);
+            if (product.stock < totalQuantityToDeduct) {
+                throw new Error(
+                    `Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${totalQuantityToDeduct} (${item.quantity} billed + ${item.freeQty || 0} free)`
+                );
             }
-            product.stock -= item.quantity;
+            product.stock -= totalQuantityToDeduct;
             await product.save();
         }
 

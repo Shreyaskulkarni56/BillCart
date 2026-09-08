@@ -4,7 +4,12 @@ interface ISaleItem {
     productId: mongoose.Types.ObjectId;
     productName: string;
     quantity: number;
+    freeQty?: number;
     price: number;
+    mrp?: number;
+    batchNo?: string;
+    hsnCode?: string;
+    gstRate?: number;
     total: number;
 }
 
@@ -24,7 +29,12 @@ const SaleItemSchema = new Schema<ISaleItem>({
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     productName: { type: String, required: true },
     quantity: { type: Number, required: true },
+    freeQty: { type: Number, default: 0 },
     price: { type: Number, required: true },
+    mrp: { type: Number },
+    batchNo: { type: String },
+    hsnCode: { type: String },
+    gstRate: { type: Number },
     total: { type: Number, required: true },
 });
 

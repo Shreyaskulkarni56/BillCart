@@ -45,14 +45,55 @@ export interface Customer {
 
 export interface Settings {
   id: string;
+  // Business Profile
   shopName: string;
+  companyName?: string;
+  tagline?: string;
   address: string;
-  gstin: string;
-  phone: string;
-  email: string;
+  city?: string;
   state: string;
   stateCode: string;
+  country?: string;
+  pincode?: string;
+  phone: string;
+  email: string;
+  website?: string;
+  logoUrl?: string;
+  pan?: string;
+  defaultCurrency?: string;
+
+  // Invoice Templates & Branding Customization
   invoicePrefix: string;
+  startingInvoiceNumber?: number;
+  paperSize?: 'A4' | 'Thermal' | 'A5';
+  templateTheme?: 'modern' | 'professional' | 'minimal' | 'standard' | 'compact';
+  showLogo?: boolean;
+  customTerms?: string;
+  primaryColor?: string;
+  logoPosition?: 'left' | 'center' | 'right';
+  showTagline?: boolean;
+  showGstinInHeader?: boolean;
+  showCompanyAddress?: boolean;
+  showContactDetails?: boolean;
+
+  // Payment Details
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
+  upiId?: string;
+  showQrCode?: boolean;
+  paymentInstructions?: string;
+  defaultPaymentTerms?: string;
+  acceptedPaymentMethods?: string[];
+
+  // Tax & GST
+  gstin: string;
+  defaultGstRate?: number;
+  taxType?: 'exclusive' | 'inclusive';
+  isComposition?: boolean;
+  defaultHsn?: string;
 }
 
 export interface BillItem {

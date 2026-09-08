@@ -18,6 +18,8 @@ interface AppContextType {
   selectedCustomer: Customer | null;
   settings: any;
   updateSettings: (settings: any) => Promise<void>;
+  uploadLogo: (logoUrl: string) => Promise<void>;
+  removeLogo: () => Promise<void>;
   addProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
@@ -27,9 +29,9 @@ interface AppContextType {
   setSelectedCustomer: (customer: Customer | null) => void;
   addToCart: (product: Product, quantity: number) => void;
   removeFromCart: (productId: string) => void;
-  updateCartItemQuantity: (productId: string, quantity: number) => void;
+  updateCartItemQuantity: (productId: string, quantity: number, freeQty?: number) => void;
   clearCart: () => void;
-  generateInvoice: (discount: number) => Promise<Sale | null>;
+  generateInvoice: (discount: number, customItems?: BillItem[]) => Promise<Sale | null>;
   updateSaleDate: (id: string, date: string) => Promise<void>;
   getTodaysSales: () => Sale[];
   getLowStockProducts: () => Product[];
@@ -78,6 +80,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       toast({ title: "Settings Updated", description: "Your settings have been saved successfully." });
     } catch (error) {
       toast({ title: "Error", description: "Failed to update settings.", variant: "destructive" });
+    }
+  };
+
+  const uploadLogo = async (logoUrl: string) => {
+    try {
+      const updated = await settingsApi.uploadLogo(logoUrl);
+      setSettingsState(updated);
+      toast({ title: "Logo Updated", description: "Company logo updated successfully." });
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to upload logo.";
+      toast({ title: "Upload Failed", description: msg, variant: "destructive" });
+      throw error;
+    }
+  };
+
+  const removeLogo = async () => {
+    try {
+      const updated = await settingsApi.removeLogo();
+      setSettingsState(updated);
+      toast({ title: "Logo Removed", description: "Company logo has been removed." });
+    } catch (error: any) {
+      toast({ title: "Error", description: "Failed to remove logo.", variant: "destructive" });
+      throw error;
     }
   };
 
@@ -187,12 +212,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCart(cart.filter((item) => item.productId !== productId));
   };
 
-  const updateCartItemQuantity = (productId: string, quantity: number) => {
+  const updateCartItemQuantity = (productId: string, quantity: number, freeQty?: number) => {
     const product = products.find((p) => p.id === productId);
-    if (product && product.stock < quantity) {
+    const existingItem = cart.find((i) => i.productId === productId);
+    const effectiveFreeQty = freeQty !== undefined ? freeQty : (existingItem?.freeQty || 0);
+    const totalRequired = quantity + effectiveFreeQty;
+
+    if (product && product.stock < totalRequired) {
       toast({
         title: "Insufficient Stock",
-        description: `Only ${product.stock} ${product.unit}(s) available.`,
+        description: `Only ${product.stock} ${product.unit}(s) available. Required ${totalRequired} (${quantity} paid + ${effectiveFreeQty} free).`,
         variant: "destructive",
       });
       return;
@@ -201,7 +230,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCart(
       cart.map((item) =>
         item.productId === productId
-          ? { ...item, quantity, total: item.price * quantity }
+          ? { ...item, quantity, freeQty: effectiveFreeQty, total: item.price * quantity }
           : item
       )
     );
@@ -212,8 +241,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSelectedCustomer(null);
   };
 
-  const generateInvoice = async (discount: number): Promise<Sale | null> => {
-    if (cart.length === 0) {
+  const generateInvoice = async (discount: number, customItems?: BillItem[]): Promise<Sale | null> => {
+    const itemsToProcess = customItems && customItems.length > 0 ? customItems : cart;
+
+    if (itemsToProcess.length === 0) {
       toast({
         title: "Empty Cart",
         description: "Please add items to the cart before generating invoice.",
@@ -231,9 +262,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return null;
     }
 
-    const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = itemsToProcess.reduce((sum, item) => sum + item.total, 0);
 
-    const totalTax = cart.reduce((sum, item) => {
+    const totalTax = itemsToProcess.reduce((sum, item) => {
       const itemGst = item.gstRate || 5; 
       const discountedItemTotal = item.total * (1 - discount / 100);
       return sum + Math.round((discountedItemTotal * (itemGst / 100)) * 100) / 100;
@@ -246,7 +277,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const newSale = await saleApi.create({
         customerId: selectedCustomer.id,
-        items: cart,
+        items: itemsToProcess,
         subtotal,
         tax: totalTax,
         total
@@ -303,6 +334,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         selectedCustomer,
         settings,
         updateSettings,
+        uploadLogo,
+        removeLogo,
         addProduct,
         updateProduct,
         deleteProduct,
