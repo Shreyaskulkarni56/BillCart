@@ -268,6 +268,16 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
               padding: 10px; 
               border-bottom: 2px solid #000;
               background: #f5f5f5;
+              position: relative;
+            }
+            .logo {
+              position: absolute;
+              left: 15px;
+              top: 50%;
+              transform: translateY(-50%);
+              max-height: 60px;
+              max-width: 150px;
+              object-fit: contain;
             }
             .shop-name { font-size: 18px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
             .shop-address { font-size: 11px; margin-bottom: 3px; }
@@ -377,6 +387,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
         <body>
           <div class="invoice-container">
             <div class="header">
+              <img src="/logo.png" class="logo" alt="Logo" onerror="this.style.display='none'" />
               <div class="shop-name">${shopInfo.name}</div>
               <div class="shop-address">${shopInfo.address.replace(/\n/g, ', ')}</div>
               <div class="shop-address">Phone: ${shopInfo.phone} | Email: ${shopInfo.email}</div>
@@ -533,6 +544,23 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
     // Header Background
     pdf.setFillColor(245, 245, 245);
     pdf.rect(margin, yPos, pageWidth - margin * 2, 25, "F");
+
+    // Add Logo to PDF if loaded
+    const logoImg = document.getElementById('invoice-logo') as HTMLImageElement;
+    if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+      // Calculate aspect ratio to fit within 20x20 area
+      const ratio = Math.min(20 / logoImg.naturalWidth, 20 / logoImg.naturalHeight);
+      const imgW = logoImg.naturalWidth * ratio;
+      const imgH = logoImg.naturalHeight * ratio;
+      // Center vertically in the 25px header
+      const imgY = yPos + (25 - imgH) / 2;
+      
+      try {
+        pdf.addImage(logoImg, 'PNG', margin + 5, imgY, imgW, imgH);
+      } catch (e) {
+        console.error("Could not add logo to PDF", e);
+      }
+    }
 
     yPos += 5;
 
@@ -778,7 +806,14 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
         {/* Invoice Preview */}
         <div ref={invoiceRef} className="bg-white border-2 border-foreground rounded-none text-foreground text-sm font-serif">
           {/* Header */}
-          <div className="text-center p-4 border-b-2 border-foreground bg-muted/30">
+          <div className="text-center p-4 border-b-2 border-foreground bg-muted/30 relative flex flex-col items-center justify-center min-h-[100px]">
+            <img 
+              id="invoice-logo" 
+              src="/logo.png" 
+              alt="Logo" 
+              className="absolute left-4 top-1/2 -translate-y-1/2 max-h-16 max-w-[150px] object-contain"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
             <h1 className="text-xl font-bold uppercase tracking-wide">{shopInfo.name}</h1>
             <p className="text-xs mt-1">{shopInfo.address.replace(/\n/g, ', ')}</p>
             <p className="text-xs">Phone: {shopInfo.phone} | Email: {shopInfo.email}</p>
