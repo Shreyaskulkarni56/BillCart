@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Receipt,
@@ -9,6 +9,8 @@ import {
   Store,
   Menu,
   Settings as SettingsIcon,
+  LogOut,
+  User as UserIcon,
 } from "lucide-react";
 import {
   Sheet,
@@ -17,6 +19,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,15 +35,15 @@ const navItems = [
   { path: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
-const Logo: React.FC<{ compact?: boolean }> = ({ compact }) => (
+const Logo: React.FC<{ compact?: boolean; shopName?: string }> = ({ compact, shopName }) => (
   <div className="flex items-center gap-3">
     <div className="w-10 h-10 bg-sidebar-primary rounded-lg flex items-center justify-center shrink-0">
       <Store className="w-6 h-6 text-sidebar-primary-foreground" />
     </div>
     {!compact && (
       <div className="min-w-0">
-        <h1 className="text-lg font-bold text-sidebar-foreground leading-tight">
-          LAKSHMI AYURVEDA Distributors
+        <h1 className="text-sm font-bold text-sidebar-foreground leading-tight truncate">
+          {shopName || "BillCart Store"}
         </h1>
         <p className="text-xs text-sidebar-foreground/60">Inventory & Billing</p>
       </div>
@@ -73,8 +77,21 @@ const NavItems: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const currentPage = navItems.find((item) => item.path === location.pathname);
+
+  // If user is on login page, render children directly without main app layout
+  if (location.pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    navigate("/login");
+  };
 
   return (
     <div className="flex h-screen flex-col md:flex-row">
@@ -95,32 +112,70 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-sidebar-foreground truncate">
-              {currentPage?.label || "ShopBill"}
+              {currentPage?.label || "BillCart"}
             </p>
             <p className="text-xs text-sidebar-foreground/60 truncate">
-              Sri Lakshmi Narayana Ayurveda
+              {user?.shopName || user?.name || "BillCart App"}
             </p>
           </div>
         </div>
+        {user && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            className="text-sidebar-foreground/70 hover:text-red-400 hover:bg-sidebar-accent shrink-0"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
+        )}
       </header>
 
       {/* Mobile Navigation Drawer */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent
           side="left"
-          className="w-[280px] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border [&>button]:text-sidebar-foreground [&>button]:hover:bg-sidebar-accent [&>button]:opacity-100"
+          className="w-[280px] p-0 bg-sidebar text-sidebar-foreground border-sidebar-border [&>button]:text-sidebar-foreground [&>button]:hover:bg-sidebar-accent [&>button]:opacity-100 flex flex-col justify-between"
         >
-          <SheetHeader className="p-6 border-b border-sidebar-border text-left">
-            <SheetTitle className="text-sidebar-foreground font-normal">
-              <Logo />
-            </SheetTitle>
-          </SheetHeader>
-          <nav className="p-4 space-y-1">
-            <NavItems onNavigate={() => setMobileMenuOpen(false)} />
-          </nav>
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
+          <div>
+            <SheetHeader className="p-6 border-b border-sidebar-border text-left">
+              <SheetTitle className="text-sidebar-foreground font-normal">
+                <Logo shopName={user?.shopName} />
+              </SheetTitle>
+            </SheetHeader>
+            <nav className="p-4 space-y-1">
+              <NavItems onNavigate={() => setMobileMenuOpen(false)} />
+            </nav>
+          </div>
+
+          <div className="p-4 border-t border-sidebar-border space-y-3">
+            {user && (
+              <div className="flex items-center justify-between p-2 rounded-lg bg-sidebar-accent/50">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate text-sidebar-foreground">{user.name}</p>
+                    <p className="text-[10px] truncate text-sidebar-foreground/60">{user.email}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="h-8 w-8 text-sidebar-foreground/70 hover:text-red-400 hover:bg-red-500/10"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             <p className="text-xs text-sidebar-foreground/50 text-center">
-              © 2024 ShopBill v1.0
+              © 2024 BillCart v1.0
             </p>
           </div>
         </SheetContent>
@@ -129,16 +184,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border shrink-0">
         <div className="p-6 border-b border-sidebar-border">
-          <Logo />
+          <Logo shopName={user?.shopName} />
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <NavItems />
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <p className="text-xs text-sidebar-foreground/50 text-center">
-            © 2024 ShopBill v1.0
+        {/* User Account Footer */}
+        <div className="p-4 border-t border-sidebar-border space-y-3">
+          {user && (
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-sidebar-accent/60 border border-sidebar-border">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate text-sidebar-foreground">{user.name}</p>
+                  <p className="text-[10px] truncate text-sidebar-foreground/60">{user.email}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="h-8 w-8 text-sidebar-foreground/70 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+          <p className="text-[11px] text-sidebar-foreground/40 text-center font-mono">
+            BillCart Multi-User v1.0
           </p>
         </div>
       </aside>

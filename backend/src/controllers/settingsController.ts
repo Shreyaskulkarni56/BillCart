@@ -1,24 +1,27 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/authMiddleware';
 import Settings from '../models/Settings';
 
-export const getSettings = async (req: Request, res: Response) => {
+export const getSettings = async (req: AuthRequest, res: Response) => {
     try {
-        let settings = await Settings.findOne();
+        const userId = req.user!._id;
+        let settings = await Settings.findOne({ user: userId });
         
         if (!settings) {
             settings = new Settings({
-                shopName: "LAKSHMI AYURVEDA Distributors",
-                companyName: "LAKSHMI AYURVEDA Distributors Pvt Ltd",
-                tagline: "Quality Ayurvedic Products & Wellness",
-                address: "123, Main Road, Near Bus Stand",
+                user: userId,
+                shopName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors",
+                companyName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors Pvt Ltd",
+                tagline: "Quality Products & Wellness",
+                address: "123 Main Street",
                 city: "Bengaluru",
                 state: "Karnataka",
                 stateCode: "29",
                 country: "India",
                 pincode: "560001",
-                phone: "+91 98765 43210",
-                email: "shop@ayurveda.com",
-                website: "https://lakshmiayurveda.com",
+                phone: req.user?.phone || "+91 98765 43210",
+                email: req.user?.email || "shop@example.com",
+                website: "https://billcart.app",
                 logoUrl: "",
                 pan: "AABCU9603R",
                 defaultCurrency: "INR",
@@ -37,10 +40,10 @@ export const getSettings = async (req: Request, res: Response) => {
                 customTerms: "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction.\n3. Thank you for your business!",
 
                 bankName: "State Bank of India",
-                accountHolder: "Lakshmi Ayurveda Distributors",
+                accountHolder: req.user?.shopName || "Store Owner",
                 accountNumber: "389201002938",
                 ifscCode: "SBIN0001234",
-                upiId: "lakshmiayurveda@upi",
+                upiId: "store@upi",
                 showQrCode: true,
                 acceptedPaymentMethods: ["Cash", "UPI", "Card", "Net Banking"]
             });
@@ -53,8 +56,9 @@ export const getSettings = async (req: Request, res: Response) => {
     }
 };
 
-export const updateSettings = async (req: Request, res: Response) => {
+export const updateSettings = async (req: AuthRequest, res: Response) => {
     try {
+        const userId = req.user!._id;
         const settingsData = req.body;
 
         // Validation
@@ -91,13 +95,13 @@ export const updateSettings = async (req: Request, res: Response) => {
             settingsData.companyName = settingsData.shopName;
         }
         
-        let settings = await Settings.findOne();
+        let settings = await Settings.findOne({ user: userId });
         if (settings) {
             Object.assign(settings, settingsData);
             const updatedSettings = await settings.save();
             res.json(updatedSettings);
         } else {
-            settings = new Settings(settingsData);
+            settings = new Settings({ ...settingsData, user: userId });
             const createdSettings = await settings.save();
             res.status(201).json(createdSettings);
         }
@@ -106,22 +110,21 @@ export const updateSettings = async (req: Request, res: Response) => {
     }
 };
 
-export const uploadLogo = async (req: Request, res: Response) => {
+export const uploadLogo = async (req: AuthRequest, res: Response) => {
     try {
+        const userId = req.user!._id;
         const { logoUrl } = req.body;
 
         if (!logoUrl) {
             return res.status(400).json({ message: 'No logo image data provided.' });
         }
 
-        // Validate image format (Data URL or HTTP URL)
         if (typeof logoUrl === 'string' && logoUrl.startsWith('data:')) {
             const isImage = /^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,/.test(logoUrl);
             if (!isImage) {
                 return res.status(400).json({ message: 'Invalid image format. Allowed formats: PNG, JPEG, WEBP, GIF, SVG.' });
             }
 
-            // Estimate base64 size (approx length * 0.75 bytes)
             const approxSizeBytes = (logoUrl.length - logoUrl.indexOf(',')) * 0.75;
             const maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
             if (approxSizeBytes > maxSizeBytes) {
@@ -129,9 +132,9 @@ export const uploadLogo = async (req: Request, res: Response) => {
             }
         }
 
-        let settings = await Settings.findOne();
+        let settings = await Settings.findOne({ user: userId });
         if (!settings) {
-            settings = new Settings({ shopName: "LAKSHMI AYURVEDA Distributors" });
+            settings = new Settings({ user: userId, shopName: req.user?.shopName || "My Store" });
         }
 
         settings.logoUrl = logoUrl;
@@ -142,9 +145,10 @@ export const uploadLogo = async (req: Request, res: Response) => {
     }
 };
 
-export const removeLogo = async (req: Request, res: Response) => {
+export const removeLogo = async (req: AuthRequest, res: Response) => {
     try {
-        let settings = await Settings.findOne();
+        const userId = req.user!._id;
+        let settings = await Settings.findOne({ user: userId });
         if (settings) {
             settings.logoUrl = "";
             const updated = await settings.save();

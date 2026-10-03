@@ -16,7 +16,8 @@ exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = expor
 const Customer_1 = __importDefault(require("../models/Customer"));
 const getCustomers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const customers = yield Customer_1.default.find({});
+        const userId = req.user._id;
+        const customers = yield Customer_1.default.find({ user: userId });
         res.json(customers);
     }
     catch (error) {
@@ -26,18 +27,25 @@ const getCustomers = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.getCustomers = getCustomers;
 const createCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const customer = new Customer_1.default(req.body);
+        const userId = req.user._id;
+        const customer = new Customer_1.default(Object.assign(Object.assign({}, req.body), { user: userId }));
         const createdCustomer = yield customer.save();
         res.status(201).json(createdCustomer);
     }
     catch (error) {
-        res.status(400).json({ message: 'Invalid customer data' });
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A customer with this phone number already exists in your records' });
+        }
+        else {
+            res.status(400).json({ message: error.message || 'Invalid customer data' });
+        }
     }
 });
 exports.createCustomer = createCustomer;
 const updateCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const customer = yield Customer_1.default.findById(req.params.id);
+        const userId = req.user._id;
+        const customer = yield Customer_1.default.findOne({ _id: req.params.id, user: userId });
         if (customer) {
             Object.assign(customer, req.body);
             const updatedCustomer = yield customer.save();
@@ -48,13 +56,19 @@ const updateCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function*
         }
     }
     catch (error) {
-        res.status(400).json({ message: 'Invalid customer data' });
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A customer with this phone number already exists in your records' });
+        }
+        else {
+            res.status(400).json({ message: error.message || 'Invalid customer data' });
+        }
     }
 });
 exports.updateCustomer = updateCustomer;
 const deleteCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const customer = yield Customer_1.default.findByIdAndDelete(req.params.id);
+        const userId = req.user._id;
+        const customer = yield Customer_1.default.findOneAndDelete({ _id: req.params.id, user: userId });
         if (customer) {
             res.json({ message: 'Customer removed' });
         }

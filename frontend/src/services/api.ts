@@ -12,6 +12,47 @@ const api = axios.create({
     },  
 }); 
 
+// Attach JWT Token to every request
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('billcart_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
+// Handle 401 Unauthorized globally
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('billcart_token');
+            localStorage.removeItem('billcart_user');
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
+export const authApi = {
+    login: async (credentials: { email: string; password: string }) => {
+        const response = await api.post('/auth/login', credentials);
+        return response.data;
+    },
+    register: async (userData: { name: string; email: string; password: string; shopName?: string; phone?: string }) => {
+        const response = await api.post('/auth/register', userData);
+        return response.data;
+    },
+    getMe: async () => {
+        const response = await api.get('/auth/me');
+        return response.data;
+    },
+};
+
 export const productApi = {
     getAll: async () => {
         const response = await api.get<Product[]>('/products');

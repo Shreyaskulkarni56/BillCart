@@ -23,6 +23,8 @@ const Customers: React.FC = () => {
     phone: "",
     email: "",
     address: "",
+    dlNo: "",
+    gstinNo: "",
     balance: 0,
     totalPurchases: 0,
   });
@@ -31,7 +33,9 @@ const Customers: React.FC = () => {
     (customer) =>
       (customer.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (customer.phone || "").includes(searchQuery) ||
-      (customer.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (customer.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.dlNo || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (customer.gstinNo || customer.gstin || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleOpenModal = (customer?: Customer) => {
@@ -40,10 +44,12 @@ const Customers: React.FC = () => {
       setFormData({
         name: customer.name,
         phone: customer.phone,
-        email: customer.email,
-        address: customer.address,
-        balance: customer.balance,
-        totalPurchases: customer.totalPurchases,
+        email: customer.email || "",
+        address: customer.address || "",
+        dlNo: customer.dlNo || "",
+        gstinNo: customer.gstinNo || customer.gstin || "",
+        balance: customer.balance || 0,
+        totalPurchases: customer.totalPurchases || 0,
       });
     } else {
       setEditingCustomer(null);
@@ -52,6 +58,8 @@ const Customers: React.FC = () => {
         phone: "",
         email: "",
         address: "",
+        dlNo: "",
+        gstinNo: "",
         balance: 0,
         totalPurchases: 0,
       });
@@ -156,14 +164,32 @@ const Customers: React.FC = () => {
                   <Phone className="w-4 h-4" />
                   <span>{customer.phone}</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{customer.email}</span>
-                </div>
-                <div className="flex items-start gap-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4 mt-0.5" />
-                  <span className="line-clamp-2">{customer.address}</span>
-                </div>
+                {customer.email && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="w-4 h-4" />
+                    <span className="truncate">{customer.email}</span>
+                  </div>
+                )}
+                {customer.address && (
+                  <div className="flex items-start gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4 mt-0.5" />
+                    <span className="line-clamp-2">{customer.address}</span>
+                  </div>
+                )}
+                {(customer.dlNo || customer.gstinNo || customer.gstin) && (
+                  <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-2 border-t border-border/50">
+                    {customer.dlNo && (
+                      <div>
+                        <span className="font-semibold text-foreground">D.L. No.:</span> {customer.dlNo}
+                      </div>
+                    )}
+                    {(customer.gstinNo || customer.gstin) && (
+                      <div>
+                        <span className="font-semibold text-foreground">GSTIN No.:</span> {customer.gstinNo || customer.gstin}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between pt-4 border-t">
@@ -241,6 +267,30 @@ const Customers: React.FC = () => {
                   setFormData({ ...formData, address: e.target.value })
                 }
               />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="dlNo">D.L. No.</Label>
+                <Input
+                  id="dlNo"
+                  placeholder="Drug License Number"
+                  value={formData.dlNo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dlNo: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="gstinNo">GSTIN No.</Label>
+                <Input
+                  id="gstinNo"
+                  placeholder="GST Identification Number"
+                  value={formData.gstinNo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gstinNo: e.target.value })
+                  }
+                />
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

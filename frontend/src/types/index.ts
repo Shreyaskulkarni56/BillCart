@@ -39,6 +39,9 @@ export interface Customer {
   phone: string;
   email: string;
   address: string;
+  dlNo?: string;
+  gstinNo?: string;
+  gstin?: string;
   balance: number;
   totalPurchases: number;
 }
@@ -115,6 +118,8 @@ export interface Sale {
   date: string;
   customerId: string;
   customerName: string;
+  customerDlNo?: string;
+  customerGstinNo?: string;
   items: BillItem[];
   subtotal: number;
   tax: number;

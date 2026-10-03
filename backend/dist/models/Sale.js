@@ -38,14 +38,22 @@ const SaleItemSchema = new mongoose_1.Schema({
     productId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Product', required: true },
     productName: { type: String, required: true },
     quantity: { type: Number, required: true },
+    freeQty: { type: Number, default: 0 },
     price: { type: Number, required: true },
+    mrp: { type: Number },
+    batchNo: { type: String },
+    hsnCode: { type: String },
+    gstRate: { type: Number },
     total: { type: Number, required: true },
 });
 const SaleSchema = new mongoose_1.Schema({
-    invoiceNo: { type: String, required: true, unique: true },
+    user: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    invoiceNo: { type: String, required: true },
     date: { type: Date, default: Date.now },
     customerId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Customer', required: true },
     customerName: { type: String, required: true },
+    customerDlNo: { type: String },
+    customerGstinNo: { type: String },
     subtotal: { type: Number, required: true },
     tax: { type: Number, required: true },
     total: { type: Number, required: true },
@@ -61,4 +69,5 @@ const SaleSchema = new mongoose_1.Schema({
         }
     }
 });
+SaleSchema.index({ user: 1, invoiceNo: 1 }, { unique: true });
 exports.default = mongoose_1.default.model('Sale', SaleSchema);

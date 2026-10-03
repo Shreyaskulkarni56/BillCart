@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Store, Receipt, MapPin, Phone, Mail, Building2, Hash, Save } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { Store, Receipt, MapPin, Phone, Mail, Building2, Hash, Save, User, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { settings, updateSettings } = useApp();
+  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     shopName: "",
@@ -45,8 +47,14 @@ const Profile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    await updateSettings(formData);
-    setIsSaving(false);
+    try {
+      await updateSettings(formData);
+      toast.success("Profile & Settings saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -54,9 +62,35 @@ const Profile = () => {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Shop Profile & Settings</h1>
-          <p className="text-muted-foreground mt-2">Manage your store details and invoice configuration.</p>
+          <p className="text-muted-foreground mt-2">Manage your store details and user account configuration.</p>
         </div>
       </div>
+
+      {/* Logged in User Card */}
+      {user && (
+        <Card className="border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/20">
+          <CardContent className="p-6 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-md">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold">{user.name}</h2>
+                  <span className="inline-flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-600 font-medium px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Authenticated Owner
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              </div>
+            </div>
+            <div className="text-right text-xs text-muted-foreground space-y-1">
+              <p><span className="font-semibold text-foreground">Store:</span> {user.shopName || "Not set"}</p>
+              <p><span className="font-semibold text-foreground">User ID:</span> <code className="font-mono">{user.id}</code></p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
         

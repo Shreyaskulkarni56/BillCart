@@ -65,6 +65,8 @@ interface CustomerInfo {
   name: string;
   address: string;
   phone: string;
+  dlNo?: string;
+  gstinNo?: string;
   gstin?: string;
 }
 
@@ -144,7 +146,8 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
     name: customer?.name || "Walk-in Customer",
     address: customer?.address || "",
     phone: customer?.phone || "",
-    gstin: "",
+    dlNo: customer?.dlNo || "",
+    gstinNo: customer?.gstinNo || customer?.gstin || "",
   });
 
   React.useEffect(() => {
@@ -152,8 +155,9 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
       setCustomerInfo({
         name: customer.name,
         address: customer.address || "",
-        phone: customer.phone,
-        gstin: "",
+        phone: customer.phone || "",
+        dlNo: customer.dlNo || "",
+        gstinNo: customer.gstinNo || customer.gstin || "",
       });
     }
   }, [customer]);
@@ -522,7 +526,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
           </div>
 
           {/* Customer Info Row */}
-          <div className="grid grid-cols-3 border-b border-foreground text-xs">
+          <div className="grid grid-cols-4 border-b border-foreground text-xs">
             <div className="p-2 border-r border-foreground">
               <span className="font-bold">Customer Name:</span>
               <div>{customerInfo.name}</div>
@@ -531,9 +535,13 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
               <span className="font-bold">Phone:</span>
               <div>{customerInfo.phone || '-'}</div>
             </div>
+            <div className="p-2 border-r border-foreground">
+              <span className="font-bold">D.L. No.:</span>
+              <div>{customerInfo.dlNo || 'N/A'}</div>
+            </div>
             <div className="p-2">
-              <span className="font-bold">Customer GSTIN:</span>
-              <div>{customerInfo.gstin || 'N/A'}</div>
+              <span className="font-bold">GSTIN No.:</span>
+              <div>{customerInfo.gstinNo || customerInfo.gstin || 'N/A'}</div>
             </div>
           </div>
 

@@ -16,7 +16,8 @@ exports.getLowStockProducts = exports.deleteProduct = exports.updateProduct = ex
 const Product_1 = __importDefault(require("../models/Product"));
 const getProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const products = yield Product_1.default.find({});
+        const userId = req.user._id;
+        const products = yield Product_1.default.find({ user: userId });
         res.json(products);
     }
     catch (error) {
@@ -26,18 +27,25 @@ const getProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 exports.getProducts = getProducts;
 const createProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const product = new Product_1.default(req.body);
+        const userId = req.user._id;
+        const product = new Product_1.default(Object.assign(Object.assign({}, req.body), { user: userId }));
         const createdProduct = yield product.save();
         res.status(201).json(createdProduct);
     }
     catch (error) {
-        res.status(400).json({ message: 'Invalid product data' });
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A product with this SKU already exists in your inventory' });
+        }
+        else {
+            res.status(400).json({ message: error.message || 'Invalid product data' });
+        }
     }
 });
 exports.createProduct = createProduct;
 const updateProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const product = yield Product_1.default.findById(req.params.id);
+        const userId = req.user._id;
+        const product = yield Product_1.default.findOne({ _id: req.params.id, user: userId });
         if (product) {
             Object.assign(product, req.body);
             const updatedProduct = yield product.save();
@@ -48,13 +56,19 @@ const updateProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
     }
     catch (error) {
-        res.status(400).json({ message: 'Invalid product data' });
+        if (error.code === 11000) {
+            res.status(400).json({ message: 'A product with this SKU already exists in your inventory' });
+        }
+        else {
+            res.status(400).json({ message: error.message || 'Invalid product data' });
+        }
     }
 });
 exports.updateProduct = updateProduct;
 const deleteProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const product = yield Product_1.default.findByIdAndDelete(req.params.id);
+        const userId = req.user._id;
+        const product = yield Product_1.default.findOneAndDelete({ _id: req.params.id, user: userId });
         if (product) {
             res.json({ message: 'Product removed' });
         }
@@ -69,7 +83,11 @@ const deleteProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 exports.deleteProduct = deleteProduct;
 const getLowStockProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const products = yield Product_1.default.find({ $expr: { $lte: ['$stock', '$minStock'] } });
+        const userId = req.user._id;
+        const products = yield Product_1.default.find({
+            user: userId,
+            $expr: { $lte: ['$stock', '$minStock'] }
+        });
         res.json(products);
     }
     catch (error) {

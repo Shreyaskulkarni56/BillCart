@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISettings extends Document {
+    user: mongoose.Types.ObjectId;
     // Business Profile
     shopName: string;
     companyName?: string;
@@ -53,6 +54,7 @@ export interface ISettings extends Document {
 }
 
 const SettingsSchema = new Schema<ISettings>({
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     // Business Profile
     shopName: { type: String, required: true },
     companyName: { type: String, default: "LAKSHMI AYURVEDA Distributors Pvt Ltd" },

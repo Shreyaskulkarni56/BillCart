@@ -1,10 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ICustomer extends Document {
+    user: mongoose.Types.ObjectId;
     name: string;
     phone: string;
     email?: string;
     address?: string;
+    dlNo?: string;
+    gstinNo?: string;
     totalPurchases: number;
     createdAt: Date;
     updatedAt: Date;
@@ -12,10 +15,13 @@ export interface ICustomer extends Document {
 
 const CustomerSchema = new Schema<ICustomer>(
     {
+        user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         name: { type: String, required: true },
-        phone: { type: String, required: true, unique: true },
+        phone: { type: String, required: true },
         email: { type: String },
         address: { type: String },
+        dlNo: { type: String },
+        gstinNo: { type: String },
         totalPurchases: { type: Number, default: 0 },
     },
     {
@@ -30,5 +36,7 @@ const CustomerSchema = new Schema<ICustomer>(
         }
     }
 );
+
+CustomerSchema.index({ user: 1, phone: 1 }, { unique: true });
 
 export default mongoose.model<ICustomer>('Customer', CustomerSchema);

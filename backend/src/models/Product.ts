@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IProduct extends Document {
+    user: mongoose.Types.ObjectId;
     name: string;
     category: string;
     price: number;
@@ -19,6 +20,7 @@ export interface IProduct extends Document {
 
 const ProductSchema = new Schema<IProduct>(
     {
+        user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         name: { type: String, required: true },
         category: { type: String, required: true },
         price: { type: Number, required: true },
@@ -26,7 +28,7 @@ const ProductSchema = new Schema<IProduct>(
         stock: { type: Number, required: true, default: 0 },
         minStock: { type: Number, default: 0 },
         unit: { type: String, required: true },
-        sku: { type: String, required: true, unique: true },
+        sku: { type: String, required: true },
         batchNo: { type: String },
         hsnCode: { type: String },
         gstRate: { type: Number },
@@ -44,5 +46,7 @@ const ProductSchema = new Schema<IProduct>(
         }
     }
 );
+
+ProductSchema.index({ user: 1, sku: 1 }, { unique: true });
 
 export default mongoose.model<IProduct>('Product', ProductSchema);

@@ -14,10 +14,13 @@ interface ISaleItem {
 }
 
 export interface ISale extends Document {
+    user: mongoose.Types.ObjectId;
     invoiceNo: string;
     date: Date;
     customerId: mongoose.Types.ObjectId;
     customerName: string;
+    customerDlNo?: string;
+    customerGstinNo?: string;
     subtotal: number;
     tax: number;
     total: number;
@@ -40,10 +43,13 @@ const SaleItemSchema = new Schema<ISaleItem>({
 
 const SaleSchema = new Schema<ISale>(
     {
-        invoiceNo: { type: String, required: true, unique: true },
+        user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        invoiceNo: { type: String, required: true },
         date: { type: Date, default: Date.now },
         customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
         customerName: { type: String, required: true },
+        customerDlNo: { type: String },
+        customerGstinNo: { type: String },
         subtotal: { type: Number, required: true },
         tax: { type: Number, required: true },
         total: { type: Number, required: true },
@@ -61,5 +67,7 @@ const SaleSchema = new Schema<ISale>(
         }
     }
 );
+
+SaleSchema.index({ user: 1, invoiceNo: 1 }, { unique: true });
 
 export default mongoose.model<ISale>('Sale', SaleSchema);

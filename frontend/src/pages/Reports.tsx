@@ -306,7 +306,7 @@ const Reports: React.FC = () => {
         <InvoiceDialog
           isOpen={true}
           onClose={() => setSelectedSale(null)}
-          customer={customers.find(c => c.id === selectedSale.customerId) || { name: selectedSale.customerName } as any}
+          customer={customers.find(c => c.id === selectedSale.customerId) || { name: selectedSale.customerName, dlNo: selectedSale.customerDlNo, gstinNo: selectedSale.customerGstinNo } as any}
           items={selectedSale.items as any}
           onUpdateItem={() => {}}
           onRemoveItem={() => {}}

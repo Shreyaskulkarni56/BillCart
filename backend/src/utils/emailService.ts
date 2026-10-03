@@ -99,15 +99,19 @@ const generateInvoicePDF = (sale: ISale, customer: ICustomer): Promise<Buffer> =
         doc.font(fontBold).text('Customer Name:', 25, y + 5);
         doc.font('Helvetica').text(customer.name, 25, y + 15);
 
-        doc.font(fontBold).text('Phone:', 200, y + 5);
-        doc.font('Helvetica').text(customer.phone, 200, y + 15);
+        doc.font(fontBold).text('Phone:', 160, y + 5);
+        doc.font('Helvetica').text(customer.phone || '-', 160, y + 15);
 
-        doc.font(fontBold).text('Customer GSTIN:', 400, y + 5);
-        doc.font('Helvetica').text('N/A', 400, y + 15);
+        doc.font(fontBold).text('D.L. No.:', 290, y + 5);
+        doc.font('Helvetica').text(customer.dlNo || 'N/A', 290, y + 15);
+
+        doc.font(fontBold).text('Customer GSTIN:', 420, y + 5);
+        doc.font('Helvetica').text(customer.gstinNo || 'N/A', 420, y + 15);
 
         // Vertical separators
-        doc.moveTo(190, y).lineTo(190, y + 30).stroke();
-        doc.moveTo(390, y).lineTo(390, y + 30).stroke();
+        doc.moveTo(150, y).lineTo(150, y + 30).stroke();
+        doc.moveTo(280, y).lineTo(280, y + 30).stroke();
+        doc.moveTo(410, y).lineTo(410, y + 30).stroke();
 
         y += 30;
         doc.moveTo(20, y).lineTo(575, y).stroke();
