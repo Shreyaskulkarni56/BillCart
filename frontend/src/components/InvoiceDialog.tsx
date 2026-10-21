@@ -25,6 +25,8 @@ import { BillItem, Customer } from "../types";
 import { useApp } from "../context/AppContext";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import QRCode from "qrcode";
+import { toast } from "sonner";
 
 interface EditableItem extends BillItem {
   hsnCode: string;
@@ -42,13 +44,15 @@ interface InvoiceDialogProps {
   items: BillItem[];
   onUpdateItem: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
-  onConfirm: (customItems?: BillItem[]) => void;
+  onConfirm: (customItems?: BillItem[], paymentMode?: string) => void;
   discount: number;
   onDiscountChange: (discount: number) => void;
   isReadOnly?: boolean;
   pastInvoiceNo?: string;
   pastDate?: string;
   onUpdateDate?: (date: string) => void;
+  initialPaymentMode?: string;
+  pastPaymentMode?: string;
 }
 
 interface ShopInfo {
@@ -112,11 +116,23 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
   pastInvoiceNo,
   pastDate,
   onUpdateDate,
+  initialPaymentMode,
+  pastPaymentMode,
 }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
-  const [paymentMode, setPaymentMode] = useState<string>("Cash");
+  const [paymentMode, setPaymentMode] = useState<string>(
+    pastPaymentMode || initialPaymentMode || "Credit (15-30 Days)"
+  );
   const { products, settings, sales } = useApp();
+
+  React.useEffect(() => {
+    if (pastPaymentMode) {
+      setPaymentMode(pastPaymentMode);
+    } else if (initialPaymentMode) {
+      setPaymentMode(initialPaymentMode);
+    }
+  }, [pastPaymentMode, initialPaymentMode, isOpen]);
 
   const [shopInfo, setShopInfo] = useState<ShopInfo>({ 
     name: "LAKSHMI AYURVEDA Distributors",
@@ -265,21 +281,52 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
 
   const isCleanView = isReadOnly || isExporting;
+
+  // Generate UPI QR Code locally & reliably without third-party network dependencies
+  React.useEffect(() => {
+    if (isOpen) {
+      const upiId = (settings?.upiId || "lakshmiayurveda@upi").trim();
+      const payeeName = (shopInfo.name || settings?.shopName || "LAKSHMI AYURVEDA Distributors").trim();
+      const fallbackTotal = items.reduce(
+        (sum, item) => sum + (Number(item.total) || ((Number(item.quantity) || 1) * (Number(item.price) || 0))),
+        0
+      );
+      const effectiveTotal = grandTotal > 0 ? grandTotal : fallbackTotal;
+      const amountStr = effectiveTotal > 0 ? effectiveTotal.toFixed(2) : "0.00";
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amountStr}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoiceNumber}`)}`;
+
+      QRCode.toDataURL(upiUrl, {
+        width: 256,
+        margin: 1,
+        color: {
+          dark: "#0f172a",
+          light: "#ffffff",
+        },
+      })
+        .then((url) => setQrCodeDataUrl(url))
+        .catch((err) => {
+          console.error("Failed to generate UPI QR code:", err);
+          QRCode.toDataURL(`upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&cu=INR`)
+            .then((url) => setQrCodeDataUrl(url))
+            .catch(() => {});
+        });
+    }
+  }, [isOpen, settings?.upiId, shopInfo.name, grandTotal, invoiceNumber, items]);
 
   // Exact Preview-to-Print Handler: Copies exact rendered preview element DOM and document styles
   const handlePrint = async () => {
     if (!invoiceRef.current) return;
 
     setIsExporting(true);
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 120));
 
     try {
       const printWindow = window.open("", "_blank");
       if (!printWindow) return;
 
-      // Collect all stylesheets from document to preserve exact Tailwind classes, colors, fonts, and borders
       const stylesHtml = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
         .map((el) => el.outerHTML)
         .join("\n");
@@ -295,10 +342,10 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             <style>
               @page {
                 size: A4 portrait;
-                margin: 8mm;
+                margin: 6mm;
               }
               @media print {
-                body {
+                html, body {
                   margin: 0 !important;
                   padding: 0 !important;
                   background-color: #ffffff !important;
@@ -307,14 +354,14 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                 }
               }
               body {
-                font-family: inherit;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: #ffffff;
                 margin: 0;
                 padding: 0;
               }
               .invoice-print-wrapper {
                 width: 100%;
-                max-width: 210mm;
+                max-width: 200mm;
                 margin: 0 auto;
                 box-sizing: border-box;
               }
@@ -330,7 +377,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                   window.focus();
                   window.print();
                   window.close();
-                }, 350);
+                }, 400);
               };
             </script>
           </body>
@@ -342,18 +389,20 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
     }
   };
 
-  // Exact Preview-to-PDF Handler: Captures high-DPI canvas snapshot of exact rendered preview element
+  // Exact Preview-to-PDF Handler: Captures high-DPI canvas snapshot with fixed A4 dimensions and perfect alignment
   const handleDownloadPDF = async () => {
     if (!invoiceRef.current || isGeneratingPDF) return;
 
     setIsGeneratingPDF(true);
     setIsExporting(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     try {
-      // Ensure all images are loaded
-      const images = Array.from(invoiceRef.current.querySelectorAll("img"));
+      const element = invoiceRef.current;
+
+      // Ensure all images (logo, QR code) are loaded
+      const images = Array.from(element.querySelectorAll("img"));
       await Promise.all(
         images.map((img) => {
           if (img.complete) return Promise.resolve();
@@ -364,29 +413,56 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
         })
       );
 
-      const canvas = await html2canvas(invoiceRef.current, {
-        scale: 2, // High resolution (300 DPI)
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution (300 DPI equivalent)
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
         logging: false,
+        windowWidth: 1024,
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.getElementById("printable-tax-invoice");
+          if (clonedEl) {
+            clonedEl.style.width = "794px"; // Exact 210mm in pixels at 96 DPI
+            clonedEl.style.minWidth = "794px";
+            clonedEl.style.maxWidth = "794px";
+            clonedEl.style.boxSizing = "border-box";
+            clonedEl.style.margin = "0 auto";
+          }
+        },
       });
 
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
       const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
       const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
       const margin = 8; // 8mm margin
       const printableWidth = pdfWidth - margin * 2; // 194mm
+      const maxPrintableHeight = pdfHeight - margin * 2; // 281mm
 
       const imgWidth = printableWidth;
       const imgHeight = (canvas.height * printableWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", margin, margin, imgWidth, Math.min(imgHeight, pdfHeight - margin * 2));
-      pdf.save(`Invoice_${invoiceNumber.replace(/\//g, "_")}.pdf`);
+      if (imgHeight > maxPrintableHeight) {
+        // Scale to fit neatly onto a single A4 page without clipping footer/terms
+        const scale = maxPrintableHeight / imgHeight;
+        const scaledWidth = printableWidth * scale;
+        const xOffset = margin + (printableWidth - scaledWidth) / 2;
+        pdf.addImage(imgData, "PNG", xOffset, margin, scaledWidth, maxPrintableHeight, undefined, "FAST");
+      } else {
+        pdf.addImage(imgData, "PNG", margin, margin, imgWidth, imgHeight, undefined, "FAST");
+      }
+
+      pdf.save(`Invoice_${invoiceNumber.replace(/[\/\\]/g, "_")}.pdf`);
+      toast.success("Invoice PDF generated and downloaded successfully!");
     } catch (err) {
       console.error("Failed to generate PDF snapshot:", err);
+      toast.error("Failed to generate PDF. Please try again.");
     } finally {
       setIsExporting(false);
       setIsGeneratingPDF(false);
@@ -395,20 +471,34 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-6xl max-h-[95vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] max-w-6xl max-h-[95vh] overflow-y-auto p-4 sm:p-6 bg-white border border-slate-200 shadow-xl rounded-2xl">
+        <DialogHeader className="pb-3 border-b border-slate-200">
           <DialogTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex items-center gap-2">
-              <span className="text-base sm:text-lg font-bold">GST Tax Invoice</span>
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-base sm:text-lg font-bold text-slate-900">Tax Invoice Preview</span>
+              <span className="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200 font-mono text-xs">
+                {invoiceNumber}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 gap-1.5 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50 shadow-xs">
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+                Print (A4)
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isGeneratingPDF} className="h-8 gap-1.5 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50 shadow-xs">
+                <Download className="w-3.5 h-3.5 text-slate-600" />
+                {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
+              </Button>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
         {/* Invoice Preview */}
         {/* Invoice Container with Dynamic Theme & Branding Settings */}
         <div
+          id="printable-tax-invoice"
           ref={invoiceRef}
-          className="bg-white border-2 rounded-none text-foreground text-sm font-serif shadow-sm overflow-hidden"
+          className="bg-white border-2 rounded-none text-foreground text-sm font-sans shadow-sm overflow-hidden"
           style={{ borderColor: settings?.primaryColor || "#000000" }}
         >
           {/* Header */}
@@ -471,12 +561,12 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
           </div>
 
           {/* Invoice Info Row */}
-          <div className="grid grid-cols-3 border-b border-foreground text-xs">
-            <div className="p-2 border-r border-foreground">
+          <div className="flex flex-row border-b border-foreground text-xs w-full">
+            <div style={{ width: "33.33%" }} className="p-2 border-r border-foreground">
               <span className="font-bold">Invoice No:</span>
-              <div>{invoiceNumber}</div>
+              <div className="font-mono font-bold text-primary text-sm mt-0.5">{invoiceNumber}</div>
             </div>
-            <div className="p-2 border-r border-foreground">
+            <div style={{ width: "33.33%" }} className="p-2 border-r border-foreground">
               <span className="font-bold">Invoice Date:</span>
               <div>
                 {isReadOnly && onUpdateDate && pastDate && !isExporting ? (
@@ -500,25 +590,53 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                     </PopoverContent>
                   </Popover>
                 ) : (
-                  currentDate
+                  <div className="font-medium mt-0.5">{currentDate}</div>
                 )}
               </div>
             </div>
-            <div className="p-2">
-              <span className="font-bold">Payment Mode:</span>
+            <div style={{ width: "33.34%" }} className="p-2">
+              <span className="font-bold">Payment Mode & Terms:</span>
               {isCleanView ? (
-                <div className="font-semibold text-xs mt-1">{paymentMode}</div>
+                <div className="font-semibold text-xs mt-0.5 flex items-center justify-between">
+                  <span>{paymentMode}</span>
+                  {paymentMode.startsWith("Credit") ? (
+                    <span className="text-[10px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      15–30 Days Credit
+                    </span>
+                  ) : paymentMode === "Cash" ? (
+                    <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      Cash Received
+                    </span>
+                  ) : paymentMode === "UPI" ? (
+                    <span className="text-[10px] text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                      UPI Settled
+                    </span>
+                  ) : paymentMode === "Bank Transfer" ? (
+                    <span className="text-[10px] text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                      Bank Transfer
+                    </span>
+                  ) : paymentMode === "Card" ? (
+                    <span className="text-[10px] text-purple-800 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                      Card Settled
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                      {paymentMode}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <Select value={paymentMode} onValueChange={setPaymentMode}>
                   <SelectTrigger className="h-6 text-xs mt-1 border-muted-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Credit (15-30 Days)">Credit (15–30 Days)</SelectItem>
                     <SelectItem value="UPI">UPI</SelectItem>
-                    <SelectItem value="Card">Card</SelectItem>
-                    <SelectItem value="Credit">Credit</SelectItem>
+                    <SelectItem value="Cash">Cash</SelectItem>
                     <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="Card">Card</SelectItem>
+                    <SelectItem value="Cheque">Cheque</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -526,46 +644,46 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
           </div>
 
           {/* Customer Info Row */}
-          <div className="grid grid-cols-4 border-b border-foreground text-xs">
-            <div className="p-2 border-r border-foreground">
+          <div className="flex flex-row border-b border-foreground text-xs w-full">
+            <div style={{ width: "30%" }} className="p-2 border-r border-foreground">
               <span className="font-bold">Customer Name:</span>
-              <div>{customerInfo.name}</div>
+              <div className="font-semibold text-slate-900 mt-0.5">{customerInfo.name}</div>
             </div>
-            <div className="p-2 border-r border-foreground">
+            <div style={{ width: "22%" }} className="p-2 border-r border-foreground">
               <span className="font-bold">Phone:</span>
-              <div>{customerInfo.phone || '-'}</div>
+              <div className="mt-0.5">{customerInfo.phone || '-'}</div>
             </div>
-            <div className="p-2 border-r border-foreground">
+            <div style={{ width: "24%" }} className="p-2 border-r border-foreground">
               <span className="font-bold">D.L. No.:</span>
-              <div>{customerInfo.dlNo || 'N/A'}</div>
+              <div className="mt-0.5 font-mono">{customerInfo.dlNo || 'N/A'}</div>
             </div>
-            <div className="p-2">
+            <div style={{ width: "24%" }} className="p-2">
               <span className="font-bold">GSTIN No.:</span>
-              <div>{customerInfo.gstinNo || customerInfo.gstin || 'N/A'}</div>
+              <div className="mt-0.5 font-mono">{customerInfo.gstinNo || customerInfo.gstin || 'N/A'}</div>
             </div>
           </div>
 
-          {/* Items Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+          {/* Items Table with Exact Proportional Widths */}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-xs border-collapse table-fixed">
               <thead>
-                <tr className="bg-muted">
-                  <th className="border border-foreground p-1 text-center font-bold">Sl.</th>
-                  <th className="border border-foreground p-1 text-left font-bold">Description</th>
-                  <th className="border border-foreground p-1 text-center font-bold">Batch No</th>
-                  <th className="border border-foreground p-1 text-center font-bold">HSN</th>
-                  <th className="border border-foreground p-1 text-right font-bold">MRP</th>
-                  <th className="border border-foreground p-1 text-center font-bold">Qty</th>
-                  <th className="border border-foreground p-1 text-center font-bold">Free</th>
-                  <th className="border border-foreground p-1 text-right font-bold">Rate</th>
-                  <th className="border border-foreground p-1 text-right font-bold">Total</th>
-                  <th className="border border-foreground p-1 text-right font-bold">Taxable</th>
-                  <th className="border border-foreground p-1 text-center font-bold">CGST%</th>
-                  <th className="border border-foreground p-1 text-right font-bold">CGST</th>
-                  <th className="border border-foreground p-1 text-center font-bold">SGST%</th>
-                  <th className="border border-foreground p-1 text-right font-bold">SGST</th>
+                <tr className="bg-slate-100 text-slate-900 border-b border-foreground">
+                  <th style={{ width: "3%" }} className="border border-foreground p-1 text-center font-bold">Sl.</th>
+                  <th style={{ width: isCleanView ? "24%" : "20%" }} className="border border-foreground p-1 text-left font-bold">Description</th>
+                  <th style={{ width: "9%" }} className="border border-foreground p-1 text-center font-bold">Batch No</th>
+                  <th style={{ width: "7%" }} className="border border-foreground p-1 text-center font-bold">HSN</th>
+                  <th style={{ width: "7%" }} className="border border-foreground p-1 text-right font-bold">MRP</th>
+                  <th style={{ width: "5%" }} className="border border-foreground p-1 text-center font-bold">Qty</th>
+                  <th style={{ width: "4%" }} className="border border-foreground p-1 text-center font-bold">Free</th>
+                  <th style={{ width: "7%" }} className="border border-foreground p-1 text-right font-bold">Rate</th>
+                  <th style={{ width: "8%" }} className="border border-foreground p-1 text-right font-bold">Total</th>
+                  <th style={{ width: "8%" }} className="border border-foreground p-1 text-right font-bold">Taxable</th>
+                  <th style={{ width: "4%" }} className="border border-foreground p-1 text-center font-bold">CGST%</th>
+                  <th style={{ width: "5%" }} className="border border-foreground p-1 text-right font-bold">CGST</th>
+                  <th style={{ width: "4%" }} className="border border-foreground p-1 text-center font-bold">SGST%</th>
+                  <th style={{ width: "5%" }} className="border border-foreground p-1 text-right font-bold">SGST</th>
                   {!isCleanView && (
-                    <th className="border border-foreground p-1 text-center font-bold">Actions</th>
+                    <th style={{ width: "4%" }} className="border border-foreground p-1 text-center font-bold">Del</th>
                   )}
                 </tr>
               </thead>
@@ -577,9 +695,9 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                   const itemSgst = Math.round((discountedTaxable * (tax.sgstRate / 100)) * 100) / 100;
 
                   return (
-                    <tr key={item.productId} className="hover:bg-muted/20">
-                      <td className="border border-foreground p-1 text-center">{index + 1}</td>
-                      <td className="border border-foreground p-1">
+                    <tr key={item.productId || index} className="hover:bg-muted/20">
+                      <td style={{ width: "3%" }} className="border border-foreground p-1 text-center font-mono">{index + 1}</td>
+                      <td style={{ width: isCleanView ? "24%" : "20%" }} className="border border-foreground p-1 truncate font-medium">
                         {isCleanView ? <span className="text-xs">{item.productName}</span> : (
                           <Input
                             value={item.productName}
@@ -588,36 +706,36 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-center">
+                      <td style={{ width: "9%" }} className="border border-foreground p-1 text-center font-mono">
                         {isCleanView ? <span className="text-xs">{item.batchNo || '-'}</span> : (
                           <Input
                             value={item.batchNo}
                             onChange={(e) => updateItemField(item.productId, 'batchNo', e.target.value)}
-                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center w-20 font-mono"
+                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center w-full font-mono"
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-center">
+                      <td style={{ width: "7%" }} className="border border-foreground p-1 text-center font-mono">
                         {isCleanView ? <span className="text-xs">{item.hsnCode || '-'}</span> : (
                           <Input
                             value={item.hsnCode}
                             onChange={(e) => updateItemField(item.productId, 'hsnCode', e.target.value)}
-                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center w-16 font-mono"
+                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center w-full font-mono"
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-right">
+                      <td style={{ width: "7%" }} className="border border-foreground p-1 text-right font-mono">
                         {isCleanView ? <span className="text-xs">₹{item.mrp.toFixed(2)}</span> : (
                           <Input
                             type="number"
                             step="0.01"
                             value={item.mrp}
                             onChange={(e) => updateItemField(item.productId, 'mrp', Number(e.target.value))}
-                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-right w-16 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-right w-full font-mono"
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-center">
+                      <td style={{ width: "5%" }} className="border border-foreground p-1 text-center">
                         {isCleanView ? <span className="text-xs font-semibold">{item.quantity}</span> : (
                           <div className="flex items-center justify-center gap-0.5">
                             <Button
@@ -633,7 +751,7 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                               type="number"
                               value={item.quantity}
                               onChange={(e) => updateItemField(item.productId, 'quantity', Math.max(1, Number(e.target.value)))}
-                              className="h-7 w-12 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center font-mono font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className="h-7 w-9 text-xs border border-muted/60 rounded px-0.5 text-center font-mono font-bold"
                             />
                             <Button
                               variant="ghost"
@@ -646,35 +764,35 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                           </div>
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-center">
+                      <td style={{ width: "4%" }} className="border border-foreground p-1 text-center font-mono">
                         {isCleanView ? <span className="text-xs">{item.freeQty || 0}</span> : (
                           <Input
                             type="number"
                             value={item.freeQty}
                             onChange={(e) => updateItemField(item.productId, 'freeQty', Number(e.target.value))}
-                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-center w-12 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-7 text-xs border border-muted/60 rounded px-0.5 text-center w-full font-mono"
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-right">
+                      <td style={{ width: "7%" }} className="border border-foreground p-1 text-right font-mono">
                         {isCleanView ? <span className="text-xs">₹{item.price.toFixed(2)}</span> : (
                           <Input
                             type="number"
                             step="0.01"
                             value={item.price}
                             onChange={(e) => updateItemField(item.productId, 'price', Number(e.target.value))}
-                            className="h-7 text-xs border border-muted/60 hover:border-primary focus:border-primary focus:bg-background rounded px-1 text-right w-16 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-7 text-xs border border-muted/60 rounded px-1 text-right w-full font-mono"
                           />
                         )}
                       </td>
-                      <td className="border border-foreground p-1 text-right font-medium">₹{item.total.toFixed(2)}</td>
-                      <td className="border border-foreground p-1 text-right">₹{discountedTaxable.toFixed(2)}</td>
-                      <td className="border border-foreground p-1 text-center font-mono text-xs">{tax.cgstRate.toFixed(2)}%</td>
-                      <td className="border border-foreground p-1 text-right">₹{itemCgst.toFixed(2)}</td>
-                      <td className="border border-foreground p-1 text-center font-mono text-xs">{tax.sgstRate.toFixed(2)}%</td>
-                      <td className="border border-foreground p-1 text-right">₹{itemSgst.toFixed(2)}</td>
+                      <td style={{ width: "8%" }} className="border border-foreground p-1 text-right font-medium font-mono">₹{item.total.toFixed(2)}</td>
+                      <td style={{ width: "8%" }} className="border border-foreground p-1 text-right font-mono">₹{discountedTaxable.toFixed(2)}</td>
+                      <td style={{ width: "4%" }} className="border border-foreground p-1 text-center font-mono text-[10px]">{tax.cgstRate.toFixed(1)}%</td>
+                      <td style={{ width: "5%" }} className="border border-foreground p-1 text-right font-mono">₹{itemCgst.toFixed(2)}</td>
+                      <td style={{ width: "4%" }} className="border border-foreground p-1 text-center font-mono text-[10px]">{tax.sgstRate.toFixed(1)}%</td>
+                      <td style={{ width: "5%" }} className="border border-foreground p-1 text-right font-mono">₹{itemSgst.toFixed(2)}</td>
                       {!isCleanView && (
-                        <td className="border border-foreground p-1 text-center">
+                        <td style={{ width: "4%" }} className="border border-foreground p-1 text-center">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -692,64 +810,63 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             </table>
           </div>
 
-          {/* Summary Section */}
-          <div className="grid grid-cols-5 border-t-2 border-foreground">
-            {/* Amount in Words & Payment Details */}
-            <div className="col-span-3 p-3 border-r border-foreground space-y-2">
+          {/* Summary Section with Always-Generated Dynamic UPI QR Code & Bank Remittance */}
+          <div className="flex flex-row border-t-2 border-foreground w-full">
+            {/* Amount in Words, Bank Details & UPI QR Code */}
+            <div style={{ width: "60%" }} className="p-3 border-r border-foreground space-y-2">
               <div>
                 <span className="font-bold text-xs">Amount in Words:</span>
-                <p className="text-xs font-semibold text-primary mt-0.5">{numberToWords(grandTotal)}</p>
+                <p className="text-xs font-bold text-indigo-700 mt-0.5">{numberToWords(grandTotal)}</p>
               </div>
-              <div className="pt-2 border-t border-muted-foreground/30 text-xs space-y-1">
-                {paymentMode === "Cash" && (
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold uppercase tracking-wider text-[10px] text-foreground">Payment Information:</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">Terms: {settings?.defaultPaymentTerms || "Due on Receipt"}</span>
-                    </div>
-                    <p className="text-xs font-semibold text-muted-foreground pt-1">Payment Mode: Cash (Paid in Full)</p>
-                  </div>
-                )}
 
-                {paymentMode === "UPI" && (
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold uppercase tracking-wider text-[10px] text-foreground">UPI Payment Details:</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">Terms: {settings?.defaultPaymentTerms || "Due on Receipt"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 pt-1">
+              {/* Dynamic QR Code & Bank Remittance Box */}
+              <div className="pt-2 border-t border-muted-foreground/30 text-xs">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-foreground">Remittance & Digital Payment:</span>
+                  <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                    paymentMode.startsWith("Credit")
+                      ? "bg-amber-50 text-amber-800 border-amber-200"
+                      : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  }`}>
+                    {paymentMode.startsWith("Credit") ? "Payment Terms: 15 to 30 Days Credit" : `Payment Mode: ${paymentMode}`}
+                  </span>
+                </div>
+
+                <div className="flex flex-row items-center gap-3 bg-slate-50/70 p-2 rounded border border-slate-200">
+                  {/* Dynamic UPI QR Code Container */}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {qrCodeDataUrl ? (
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=upi://pay?pa=${encodeURIComponent(settings?.upiId || "lakshmiayurveda@upi")}&pn=${encodeURIComponent(shopInfo.name)}&am=${grandTotal}`}
-                        alt="UPI QR Code"
-                        className="w-16 h-16 border rounded bg-white p-0.5 shrink-0"
+                        src={qrCodeDataUrl}
+                        alt="UPI Payment QR Code"
+                        className="w-20 h-20 border rounded bg-white p-0.5 shrink-0 shadow-xs"
                       />
-                      <div className="text-xs font-mono space-y-0.5">
-                        <p className="font-bold text-foreground">Scan QR Code to Pay</p>
-                        <p className="text-[11px]">UPI ID: <span className="font-semibold text-primary">{settings?.upiId || "lakshmiayurveda@upi"}</span></p>
-                        <p className="text-[10px] text-muted-foreground">Pay via GPay, PhonePe, Paytm or BHIM</p>
+                    ) : (
+                      <div className="w-20 h-20 border rounded bg-white flex flex-col items-center justify-center text-[10px] text-slate-400 p-1 text-center">
+                        <span className="animate-pulse">Generating QR...</span>
                       </div>
+                    )}
+                    <div className="text-[11px] font-mono space-y-0.5">
+                      <p className="font-bold text-slate-900">Scan & Pay via UPI</p>
+                      <p className="text-[10px] text-slate-700">UPI ID: <span className="font-bold text-indigo-700">{settings?.upiId || "lakshmiayurveda@upi"}</span></p>
+                      <p className="text-[10px] text-slate-500 truncate max-w-[170px]">Payee: {shopInfo.name}</p>
+                      <p className="text-[11px] font-bold text-emerald-700">Amount: ₹{grandTotal.toFixed(2)}</p>
+                      <p className="text-[9px] text-slate-400">PhonePe • GPay • Paytm • BHIM</p>
                     </div>
                   </div>
-                )}
 
-                {(paymentMode === "Bank Transfer" || paymentMode === "Card" || paymentMode === "Credit") && (
-                  <div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold uppercase tracking-wider text-[10px] text-foreground">Bank Remittance Info:</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">Terms: {settings?.defaultPaymentTerms || "Due on Receipt"}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] font-mono pt-1">
-                      <p>Holder: <span className="font-semibold text-foreground">{settings?.accountHolder || shopInfo.name}</span></p>
-                      <p>Bank: <span className="font-semibold text-foreground">{settings?.bankName || "State Bank of India"}</span></p>
-                      <p>A/C: <span className="font-semibold text-foreground">{settings?.accountNumber || "389201002938"}</span></p>
-                      <p>IFSC: <span className="font-semibold text-foreground">{settings?.ifscCode || "SBIN0001234"}</span></p>
-                      {settings?.branchName && <p className="col-span-2">Branch: <span className="font-semibold text-foreground">{settings.branchName}</span></p>}
-                    </div>
+                  {/* Bank Details */}
+                  <div className="border-l border-slate-200 pl-3 text-[10px] font-mono space-y-0.5 flex-1 w-full">
+                    <p className="font-bold text-slate-800 text-[11px]">Bank Remittance Details:</p>
+                    <p><span className="text-slate-500">Bank:</span> <span className="font-semibold">{settings?.bankName || "State Bank of India"}</span></p>
+                    <p><span className="text-slate-500">A/C:</span> <span className="font-bold text-slate-900">{settings?.accountNumber || "389201002938"}</span></p>
+                    <p><span className="text-slate-500">IFSC:</span> <span className="font-bold text-slate-900">{settings?.ifscCode || "SBIN0001234"}</span></p>
+                    <p><span className="text-slate-500">Holder:</span> {settings?.accountHolder || shopInfo.name}</p>
                   </div>
-                )}
+                </div>
 
                 {settings?.paymentInstructions && (
-                  <p className="text-[10px] italic text-muted-foreground pt-1 border-t border-dashed border-border/80">
+                  <p className="text-[10px] italic text-muted-foreground pt-1.5 border-t border-dashed border-border/80 mt-1.5">
                     <span className="font-semibold not-italic text-foreground">Note: </span>{settings.paymentInstructions}
                   </p>
                 )}
@@ -757,16 +874,16 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
             </div>
 
             {/* Summary Table */}
-            <div className="col-span-2 text-xs">
+            <div style={{ width: "40%" }} className="text-xs">
               <div className="flex justify-between p-2 border-b border-muted-foreground/30">
                 <span>Subtotal:</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span className="font-mono">₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 border-b border-muted-foreground/30">
                 <span>Discount:</span>
                 <div className="flex items-center gap-2">
                   {isCleanView ? (
-                    <span className="text-xs text-right font-semibold">{discount}%</span>
+                    <span className="text-xs text-right font-semibold font-mono">{discount}%</span>
                   ) : (
                     <>
                       <Input
@@ -775,76 +892,68 @@ const InvoiceDialog: React.FC<InvoiceDialogProps> = ({
                         max="100"
                         value={discount}
                         onChange={(e) => onDiscountChange(Number(e.target.value))}
-                        className="w-16 h-6 text-xs text-right"
+                        className="w-16 h-6 text-xs text-right font-mono"
                       />
                       <span>%</span>
                     </>
                   )}
-                  <span className="text-muted-foreground">(-₹{discountAmount.toFixed(2)})</span>
+                  <span className="text-muted-foreground font-mono">(-₹{discountAmount.toFixed(2)})</span>
                 </div>
               </div>
               <div className="flex justify-between p-2 border-b border-muted-foreground/30">
                 <span>Total CGST:</span>
-                <span>₹{totalCgst.toFixed(2)}</span>
+                <span className="font-mono">₹{totalCgst.toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 border-b border-muted-foreground/30">
                 <span>Total SGST:</span>
-                <span>₹{totalSgst.toFixed(2)}</span>
+                <span className="font-mono">₹{totalSgst.toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-2 border-b border-muted-foreground/30 text-xs">
                 <span>Round Off:</span>
-                <span>{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
+                <span className="font-mono">{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
               </div>
-              <div className="flex justify-between p-2 bg-muted font-bold text-sm">
+              <div className="flex justify-between p-2.5 bg-slate-100 font-bold text-sm text-slate-900">
                 <span>Net Amount:</span>
-                <span>₹{grandTotal.toFixed(2)}</span>
+                <span className="font-mono text-base text-indigo-700">₹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="grid grid-cols-5 border-t-2 border-foreground text-xs">
-            <div className="col-span-3 p-3 border-r border-foreground">
+          <div className="flex flex-row border-t-2 border-foreground text-xs w-full">
+            <div style={{ width: "60%" }} className="p-3 border-r border-foreground">
               <p className="font-bold mb-1">Terms & Conditions:</p>
               {settings?.customTerms ? (
-                <p className="whitespace-pre-line">{settings.customTerms}</p>
+                <p className="whitespace-pre-line text-[11px] leading-relaxed">{settings.customTerms}</p>
               ) : (
-                <>
+                <div className="text-[11px] space-y-0.5 text-slate-700">
                   <p>1. Goods once sold will not be taken back.</p>
-                  <p>2. Subject to {shopInfo.state || "Karnataka"} Jurisdiction only.</p>
-                  <p>3. E. & O.E.</p>
-                </>
+                  <p>2. Payment due within 15 to 30 days of invoice date.</p>
+                  <p>3. Subject to {shopInfo.state || "Karnataka"} Jurisdiction only. E. & O.E.</p>
+                </div>
               )}
             </div>
-            <div className="col-span-2 p-3 text-center">
-              <p className="text-xs">For {shopInfo.name}</p>
+            <div style={{ width: "40%" }} className="p-3 text-center flex flex-col justify-between">
+              <p className="text-xs font-semibold">For {shopInfo.name}</p>
               <div className="mt-8 border-t border-foreground inline-block px-6 pt-1">
-                <p className="text-xs">Authorised Signatory</p>
+                <p className="text-xs font-medium">Authorised Signatory</p>
               </div>
             </div>
           </div>
 
           {/* Thanks Message */}
-          <div className="text-center py-3 bg-muted/30 border-t border-foreground font-bold text-sm">
+          <div className="text-center py-2.5 bg-slate-50 border-t border-foreground font-bold text-xs tracking-wider text-slate-700">
             *** Thank You for Shopping with Us! ***
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2 mt-4">
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4 pt-3 border-t border-slate-200">
+          <Button variant="outline" onClick={onClose} className="h-9 text-xs border-slate-200 bg-white">
             Cancel
           </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="w-4 h-4 mr-2" />
-            Print
-          </Button>
-          <Button variant="outline" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>
-            <Download className="w-4 h-4 mr-2" />
-            {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
-          </Button>
           {!isReadOnly && (
-            <Button onClick={() => onConfirm(editableItems)} className="bg-primary hover:bg-primary/90">
-              Confirm & Generate
+            <Button onClick={() => onConfirm(editableItems, paymentMode)} className="h-9 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">
+              Confirm & Generate Invoice
             </Button>
           )}
         </DialogFooter>

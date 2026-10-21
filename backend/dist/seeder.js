@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -41,11 +32,11 @@ const customersData = [
     { name: "Sunita Devi", phone: "9876543213", email: "sunita@email.com", address: "321 Garden Lane, Pune", totalPurchases: 5600 },
     { name: "Walk-in Customer", phone: "0000000000", email: "-", address: "-", totalPurchases: 0 },
 ];
-const seedData = () => __awaiter(void 0, void 0, void 0, function* () {
+const seedData = async () => {
     try {
-        let user = yield User_1.default.findOne({ email: 'admin@billcart.com' });
+        let user = await User_1.default.findOne({ email: 'admin@billcart.com' });
         if (!user) {
-            user = yield User_1.default.create({
+            user = await User_1.default.create({
                 name: 'Admin User',
                 email: 'admin@billcart.com',
                 password: 'password123',
@@ -54,15 +45,15 @@ const seedData = () => __awaiter(void 0, void 0, void 0, function* () {
             });
             console.log('Created default admin user: admin@billcart.com / password123');
         }
-        yield Product_1.default.deleteMany({ user: user._id });
-        yield Customer_1.default.deleteMany({ user: user._id });
-        const products = productsData.map(p => (Object.assign(Object.assign({}, p), { user: user._id })));
-        const customers = customersData.map(c => (Object.assign(Object.assign({}, c), { user: user._id })));
-        yield Product_1.default.insertMany(products);
-        yield Customer_1.default.insertMany(customers);
-        const existingSettings = yield Settings_1.default.findOne({ user: user._id });
+        await Product_1.default.deleteMany({ user: user._id });
+        await Customer_1.default.deleteMany({ user: user._id });
+        const products = productsData.map(p => ({ ...p, user: user._id }));
+        const customers = customersData.map(c => ({ ...c, user: user._id }));
+        await Product_1.default.insertMany(products);
+        await Customer_1.default.insertMany(customers);
+        const existingSettings = await Settings_1.default.findOne({ user: user._id });
         if (!existingSettings) {
-            yield Settings_1.default.create({
+            await Settings_1.default.create({
                 user: user._id,
                 shopName: "LAKSHMI AYURVEDA Distributors",
                 companyName: "LAKSHMI AYURVEDA Distributors Pvt Ltd",
@@ -84,5 +75,5 @@ const seedData = () => __awaiter(void 0, void 0, void 0, function* () {
         console.error(`Seeder Error: ${error}`);
         process.exit(1);
     }
-});
+};
 seedData();

@@ -70,4 +70,4 @@ const SaleSchema = new Schema<ISale>(
 
 SaleSchema.index({ user: 1, invoiceNo: 1 }, { unique: true });
 
-export default mongoose.model<ISale>('Sale', SaleSchema);
+export default (mongoose.models.Sale as mongoose.Model<ISale>) || mongoose.model<ISale>('Sale', SaleSchema);

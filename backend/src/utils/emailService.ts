@@ -2,13 +2,20 @@ import nodemailer from 'nodemailer';
 import { ISale } from '../models/Sale';
 import { ICustomer } from '../models/Customer';
 
-const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+let transporter: nodemailer.Transporter | null = null;
+
+const getTransporter = () => {
+    if (!transporter) {
+        transporter = nodemailer.createTransport({
+            service: process.env.EMAIL_SERVICE || 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+    }
+    return transporter;
+};
 
 import PDFDocument from 'pdfkit';
 
@@ -362,7 +369,7 @@ export const sendInvoiceEmail = async (sale: ISale, customer: ICustomer) => {
             ],
         };
 
-        const info = await transporter.sendMail(mailOptions);
+        const info = await getTransporter().sendMail(mailOptions);
         console.log(`Email sent: ${info.messageId}`);
     } catch (error) {
         console.error('Error sending email:', error);

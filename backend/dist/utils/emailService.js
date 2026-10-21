@@ -1,26 +1,23 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendInvoiceEmail = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
-const transporter = nodemailer_1.default.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+let transporter = null;
+const getTransporter = () => {
+    if (!transporter) {
+        transporter = nodemailer_1.default.createTransport({
+            service: process.env.EMAIL_SERVICE || 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+    }
+    return transporter;
+};
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const numberToWords = (num) => {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -253,7 +250,7 @@ const generateInvoicePDF = (sale, customer) => {
         doc.end();
     });
 };
-const sendInvoiceEmail = (sale, customer) => __awaiter(void 0, void 0, void 0, function* () {
+const sendInvoiceEmail = async (sale, customer) => {
     // Send to Admin (yourself)
     const adminEmail = process.env.EMAIL_USER;
     if (!adminEmail) {
@@ -261,7 +258,7 @@ const sendInvoiceEmail = (sale, customer) => __awaiter(void 0, void 0, void 0, f
         return;
     }
     try {
-        const pdfBuffer = yield generateInvoicePDF(sale, customer);
+        const pdfBuffer = await generateInvoicePDF(sale, customer);
         const itemsList = sale.items
             .map((item) => `<tr>
           <td style="padding: 8px; border: 1px solid #ddd;">${item.productName}</td>
@@ -314,12 +311,12 @@ const sendInvoiceEmail = (sale, customer) => __awaiter(void 0, void 0, void 0, f
                 },
             ],
         };
-        const info = yield transporter.sendMail(mailOptions);
+        const info = await getTransporter().sendMail(mailOptions);
         console.log(`Email sent: ${info.messageId}`);
     }
     catch (error) {
         console.error('Error sending email:', error);
         // Don't throw error to avoid failing the response if email fails
     }
-});
+};
 exports.sendInvoiceEmail = sendInvoiceEmail;

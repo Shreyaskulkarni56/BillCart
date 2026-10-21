@@ -1,47 +1,20 @@
 import 'dotenv/config'; // Load env vars before anything else
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import helmet from 'helmet';
+import app from './app';
 import connectDB from './config/db';
-
-import authRoutes from './routes/authRoutes';
-import productRoutes from './routes/productRoutes';
-import customerRoutes from './routes/customerRoutes';
-import saleRoutes from './routes/saleRoutes';
-import settingsRoutes from './routes/settingsRoutes';
-
-// Connect to database
-connectDB();
-
-const app = express();
-
-// Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-app.use(
-    cors({
-        origin: true,
-        credentials: true,
-    })
-);
-app.use(helmet());
-app.use(morgan('dev'));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/sales', saleRoutes);
-app.use('/api/settings', settingsRoutes);
-
-app.get('/', (req, res) => {
-    res.send('API is running...');
-});
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// Connect to database for traditional Node.js hosting (e.g. Render)
+connectDB()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error(`Failed to connect to MongoDB: ${err.message}`);
+        // Keep listening so health check endpoint can still be reached
+        app.listen(PORT, () => {
+            console.log(`Server running in degraded mode on port ${PORT}`);
+        });
+    });

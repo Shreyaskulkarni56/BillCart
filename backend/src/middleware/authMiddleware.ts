@@ -19,14 +19,15 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
             const decoded = jwt.verify(token, secret) as { id: string };
 
             const user = await User.findById(decoded.id).select('-password');
+
             if (!user) {
                 return res.status(401).json({ message: 'Not authorized, user not found' });
             }
 
             req.user = user;
             next();
-        } catch (error) {
-            console.error('Auth middleware error:', error);
+        } catch (error: any) {
+            console.error('Auth middleware error:', error.message);
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
     } else {

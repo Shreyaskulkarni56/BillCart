@@ -70,4 +70,4 @@ const SaleSchema = new mongoose_1.Schema({
     }
 });
 SaleSchema.index({ user: 1, invoiceNo: 1 }, { unique: true });
-exports.default = mongoose_1.default.model('Sale', SaleSchema);
+exports.default = mongoose_1.default.models.Sale || mongoose_1.default.model('Sale', SaleSchema);

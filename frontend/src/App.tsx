@@ -12,6 +12,12 @@ import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Invoices from "./pages/Invoices";
+import Transactions from "./pages/Transactions";
+import Inventory from "./pages/Inventory";
+import Purchases from "./pages/Purchases";
+import Returns from "./pages/Returns";
+import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -46,10 +52,58 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/billing/create"
+                  element={
+                    <ProtectedRoute>
+                      <Billing />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/invoices"
+                  element={
+                    <ProtectedRoute>
+                      <Invoices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/transactions"
+                  element={
+                    <ProtectedRoute>
+                      <Transactions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/products"
                   element={
                     <ProtectedRoute>
                       <Products />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventory"
+                  element={
+                    <ProtectedRoute>
+                      <Inventory />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/purchases"
+                  element={
+                    <ProtectedRoute>
+                      <Purchases />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/returns"
+                  element={
+                    <ProtectedRoute>
+                      <Returns />
                     </ProtectedRoute>
                   }
                 />
@@ -74,6 +128,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
                     </ProtectedRoute>
                   }
                 />

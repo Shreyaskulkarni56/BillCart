@@ -1,4 +1,7 @@
 .env
-.node_modules
-.package-lock.json
-.package.json
+.env.*
+.dev.vars
+.dev.vars.*
+.wrangler
+node_modules
+dist

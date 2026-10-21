@@ -60,4 +60,4 @@ const ProductSchema = new mongoose_1.Schema({
     }
 });
 ProductSchema.index({ user: 1, sku: 1 }, { unique: true });
-exports.default = mongoose_1.default.model('Product', ProductSchema);
+exports.default = mongoose_1.default.models.Product || mongoose_1.default.model('Product', ProductSchema);

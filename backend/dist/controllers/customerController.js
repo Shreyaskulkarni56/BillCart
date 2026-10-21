@@ -1,35 +1,29 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.getCustomers = void 0;
 const Customer_1 = __importDefault(require("../models/Customer"));
-const getCustomers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getCustomers = async (req, res) => {
     try {
         const userId = req.user._id;
-        const customers = yield Customer_1.default.find({ user: userId });
+        const customers = await Customer_1.default.find({ user: userId });
         res.json(customers);
     }
     catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
-});
+};
 exports.getCustomers = getCustomers;
-const createCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createCustomer = async (req, res) => {
     try {
         const userId = req.user._id;
-        const customer = new Customer_1.default(Object.assign(Object.assign({}, req.body), { user: userId }));
-        const createdCustomer = yield customer.save();
+        const customer = new Customer_1.default({
+            ...req.body,
+            user: userId,
+        });
+        const createdCustomer = await customer.save();
         res.status(201).json(createdCustomer);
     }
     catch (error) {
@@ -40,15 +34,15 @@ const createCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function*
             res.status(400).json({ message: error.message || 'Invalid customer data' });
         }
     }
-});
+};
 exports.createCustomer = createCustomer;
-const updateCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateCustomer = async (req, res) => {
     try {
         const userId = req.user._id;
-        const customer = yield Customer_1.default.findOne({ _id: req.params.id, user: userId });
+        const customer = await Customer_1.default.findOne({ _id: req.params.id, user: userId });
         if (customer) {
             Object.assign(customer, req.body);
-            const updatedCustomer = yield customer.save();
+            const updatedCustomer = await customer.save();
             res.json(updatedCustomer);
         }
         else {
@@ -63,12 +57,12 @@ const updateCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function*
             res.status(400).json({ message: error.message || 'Invalid customer data' });
         }
     }
-});
+};
 exports.updateCustomer = updateCustomer;
-const deleteCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteCustomer = async (req, res) => {
     try {
         const userId = req.user._id;
-        const customer = yield Customer_1.default.findOneAndDelete({ _id: req.params.id, user: userId });
+        const customer = await Customer_1.default.findOneAndDelete({ _id: req.params.id, user: userId });
         if (customer) {
             res.json({ message: 'Customer removed' });
         }
@@ -79,5 +73,5 @@ const deleteCustomer = (req, res) => __awaiter(void 0, void 0, void 0, function*
     catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
-});
+};
 exports.deleteCustomer = deleteCustomer;

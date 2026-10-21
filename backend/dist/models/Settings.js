@@ -93,4 +93,4 @@ const SettingsSchema = new mongoose_1.Schema({
         }
     }
 });
-exports.default = mongoose_1.default.model('Settings', SettingsSchema);
+exports.default = mongoose_1.default.models.Settings || mongoose_1.default.model('Settings', SettingsSchema);

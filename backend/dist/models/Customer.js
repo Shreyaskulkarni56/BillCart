@@ -55,4 +55,4 @@ const CustomerSchema = new mongoose_1.Schema({
     }
 });
 CustomerSchema.index({ user: 1, phone: 1 }, { unique: true });
-exports.default = mongoose_1.default.model('Customer', CustomerSchema);
+exports.default = mongoose_1.default.models.Customer || mongoose_1.default.model('Customer', CustomerSchema);

@@ -1,26 +1,63 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.disconnectDB = exports.connectDB = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
-const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
+let activeRequests = 0;
+let connPromise = null;
+const getMongoUri = () => {
+    // 1. Check process.env (populated by Node/Render via dotenv and Workers via nodejs_compat)
+    if (process.env.MONGO_URI) {
+        return process.env.MONGO_URI;
+    }
+    // 2. Check cloudflare:workers env if available
     try {
-        const conn = yield mongoose_1.default.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/shopease');
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        const { env } = require('cloudflare:workers');
+        if (env?.MONGO_URI) {
+            return env.MONGO_URI;
+        }
     }
-    catch (error) {
-        console.error(`Error: ${error.message}`);
-        process.exit(1);
+    catch {
+        // Not in Workers or cloudflare:workers not available
     }
-});
-exports.default = connectDB;
+    throw new Error('MONGO_URI is not set. Please set the MONGO_URI secret in Cloudflare or in .env file.');
+};
+const connectDB = async () => {
+    activeRequests++;
+    if (mongoose_1.default.connection && mongoose_1.default.connection.readyState === 1) {
+        return mongoose_1.default;
+    }
+    if (mongoose_1.default.connection && mongoose_1.default.connection.readyState === 2 && connPromise) {
+        return connPromise;
+    }
+    const mongoUri = getMongoUri();
+    connPromise = mongoose_1.default.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000,
+    }).catch((err) => {
+        connPromise = null;
+        throw err;
+    });
+    const conn = await connPromise;
+    console.log(`[connectDB] MongoDB Connected: ${mongoose_1.default.connection.host}`);
+    return conn;
+};
+exports.connectDB = connectDB;
+const disconnectDB = async () => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    // In Cloudflare Workers, isolates freeze when idle, causing lingering sockets to die.
+    // Disconnecting when active requests reach 0 ensures clean socket teardown between requests.
+    if (activeRequests === 0 && mongoose_1.default.connection && mongoose_1.default.connection.readyState !== 0) {
+        try {
+            await mongoose_1.default.disconnect();
+            connPromise = null;
+        }
+        catch (err) {
+            console.error('[disconnectDB] Error disconnecting:', err.message);
+        }
+    }
+};
+exports.disconnectDB = disconnectDB;
+exports.default = exports.connectDB;

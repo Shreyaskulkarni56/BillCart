@@ -1,13 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   BarChart,
   Bar,
@@ -21,204 +15,399 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { CalendarDays, TrendingUp, Receipt, IndianRupee, X } from "lucide-react";
+import {
+  CalendarDays,
+  TrendingUp,
+  Receipt,
+  IndianRupee,
+  X,
+  Download,
+  Search,
+  ArrowUpRight,
+  PieChart as PieIcon,
+  BarChart3,
+  CheckCircle2,
+  FileSpreadsheet,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 import InvoiceDialog from "@/components/InvoiceDialog";
 import { Sale } from "../types";
+import { toast } from "sonner";
 
-const COLORS = ["#2563eb", "#16a34a", "#ea580c", "#8b5cf6", "#ec4899", "#06b6d4"];
+const CATEGORY_COLORS = ["#4338ca", "#0284c7", "#0d9488", "#16a34a", "#e11d48", "#d97706", "#7c3aed"];
 
 const Reports: React.FC = () => {
   const { sales, products, customers, updateSaleDate } = useApp();
-  const [period, setPeriod] = useState<"daily" | "monthly">("daily");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: undefined,
-    to: undefined,
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [activePreset, setActivePreset] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
-  const filteredSales = sales.filter((sale) => {
-    if (!dateRange?.from) return true;
-    const saleDate = new Date(sale.date);
-    const start = startOfDay(dateRange.from);
-    const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
-    return saleDate >= start && saleDate <= end;
-  });
-
-  // Calculate sales by date
-  const salesByDate = filteredSales.reduce((acc, sale) => {
-    const date = new Date(sale.date).toISOString().split('T')[0];
-    if (!acc[date]) {
-      acc[date] = { date, total: 0, count: 0 };
+  // Date range presets
+  const handlePresetSelect = (preset: "today" | "7days" | "30days" | "thisMonth" | "all") => {
+    setActivePreset(preset);
+    const now = new Date();
+    if (preset === "all") {
+      setDateRange(undefined);
+    } else if (preset === "today") {
+      setDateRange({ from: startOfDay(now), to: endOfDay(now) });
+    } else if (preset === "7days") {
+      setDateRange({ from: startOfDay(subDays(now, 6)), to: endOfDay(now) });
+    } else if (preset === "30days") {
+      setDateRange({ from: startOfDay(subDays(now, 29)), to: endOfDay(now) });
+    } else if (preset === "thisMonth") {
+      setDateRange({ from: startOfMonth(now), to: endOfMonth(now) });
     }
-    acc[date].total += sale.total;
-    acc[date].count += 1;
-    return acc;
-  }, {} as Record<string, { date: string; total: number; count: number }>);
+  };
 
-  const dailyData = Object.values(salesByDate)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 7)
-    .reverse();
-
-  // Calculate sales by category
-  const salesByCategory = filteredSales.reduce((acc, sale) => {
-    sale.items.forEach((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (product) {
-        const category = product.category;
-        if (!acc[category]) {
-          acc[category] = 0;
-        }
-        acc[category] += item.total;
-      }
+  // Filter sales by date range
+  const dateFilteredSales = useMemo(() => {
+    return sales.filter((sale) => {
+      if (!dateRange?.from) return true;
+      const saleDate = new Date(sale.date);
+      const start = startOfDay(dateRange.from);
+      const end = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+      return saleDate >= start && saleDate <= end;
     });
-    return acc;
-  }, {} as Record<string, number>);
+  }, [sales, dateRange]);
 
-  const categoryData = Object.entries(salesByCategory).map(([name, value]) => ({
-    name,
-    value: Math.round(value),
-  }));
+  // Filter sales additionally by search query
+  const displaySales = useMemo(() => {
+    if (!searchQuery.trim()) return dateFilteredSales;
+    const query = searchQuery.toLowerCase();
+    return dateFilteredSales.filter(
+      (s) =>
+        s.invoiceNo.toLowerCase().includes(query) ||
+        s.customerName.toLowerCase().includes(query)
+    );
+  }, [dateFilteredSales, searchQuery]);
 
-  // Summary stats
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-  const totalTransactions = filteredSales.length;
-  const avgTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-  const totalTax = filteredSales.reduce((sum, sale) => sum + sale.tax, 0);
+  // Aggregate sales by date for Trend Chart
+  const dailyData = useMemo(() => {
+    const salesByDate = dateFilteredSales.reduce((acc, sale) => {
+      const dateKey = new Date(sale.date).toISOString().split("T")[0];
+      if (!acc[dateKey]) {
+        acc[dateKey] = { date: dateKey, total: 0, count: 0 };
+      }
+      acc[dateKey].total += sale.total;
+      acc[dateKey].count += 1;
+      return acc;
+    }, {} as Record<string, { date: string; total: number; count: number }>);
+
+    return Object.values(salesByDate)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14);
+  }, [dateFilteredSales]);
+
+  // Aggregate sales by category for Donut Chart
+  const categoryData = useMemo(() => {
+    const salesByCategory = dateFilteredSales.reduce((acc, sale) => {
+      sale.items.forEach((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        const category = product?.category || "Other";
+        acc[category] = (acc[category] || 0) + item.total;
+      });
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(salesByCategory)
+      .map(([name, value]) => ({
+        name,
+        value: Math.round(value),
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [dateFilteredSales, products]);
+
+  // KPI Calculations
+  const totalRevenue = dateFilteredSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalTransactions = dateFilteredSales.length;
+  const avgTicket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+  const totalGst = dateFilteredSales.reduce((sum, sale) => sum + sale.tax, 0);
+
+  // CSV Export handler
+  const handleExportCSV = () => {
+    if (dateFilteredSales.length === 0) {
+      toast.error("No transactions to export for the selected date range.");
+      return;
+    }
+
+    const headers = ["Invoice No", "Date", "Customer Name", "Customer GSTIN", "Items Count", "Subtotal (INR)", "Tax GST (INR)", "Total Amount (INR)"];
+    const rows = dateFilteredSales.map((s) => [
+      s.invoiceNo,
+      new Date(s.date).toISOString().split("T")[0],
+      `"${s.customerName.replace(/"/g, '""')}"`,
+      s.customerGstinNo || "N/A",
+      s.items.length,
+      s.subtotal.toFixed(2),
+      s.tax.toFixed(2),
+      s.total.toFixed(2),
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Sales_Report_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${dateFilteredSales.length} transaction records to CSV.`);
+  };
 
   return (
     <div className="page-container">
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Reports</h1>
-          <p className="text-muted-foreground">Sales analytics and insights</p>
+          <div className="flex items-center gap-2">
+            <h1 className="page-title">Reports & Analytics</h1>
+            <span className="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200">
+              Live Insights
+            </span>
+          </div>
+          <p className="page-subtitle">
+            Track business growth, GST liabilities, sales trends, and category distribution.
+          </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          {dateRange?.from && (
-            <Button variant="ghost" size="icon" onClick={() => setDateRange(undefined)} title="Clear filter">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+
+        {/* Date Filter Toolbar & Export */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Preset Buttons */}
+          <div className="hidden sm:inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-medium">
+            <button
+              onClick={() => handlePresetSelect("all")}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                activePreset === "all" ? "bg-white text-foreground shadow-xs font-semibold" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => handlePresetSelect("today")}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                activePreset === "today" ? "bg-white text-foreground shadow-xs font-semibold" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => handlePresetSelect("7days")}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                activePreset === "7days" ? "bg-white text-foreground shadow-xs font-semibold" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              7 Days
+            </button>
+            <button
+              onClick={() => handlePresetSelect("thisMonth")}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                activePreset === "thisMonth" ? "bg-white text-foreground shadow-xs font-semibold" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              This Month
+            </button>
+          </div>
+
+          {/* Date Picker Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-64 justify-start text-left font-normal">
-                <CalendarDays className="mr-2 h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-normal border-slate-200 bg-white">
+                <CalendarDays className="h-3.5 w-3.5 text-slate-500" />
                 {dateRange?.from ? (
                   dateRange.to ? (
                     <>
-                      {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                      {format(dateRange.from, "LLL dd")} - {format(dateRange.to, "LLL dd, yyyy")}
                     </>
                   ) : (
-                    format(dateRange.from, "LLL dd, y")
+                    format(dateRange.from, "LLL dd, yyyy")
                   )
                 ) : (
-                  <span>Filter by Date</span>
+                  <span>Custom Date</span>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 bg-white shadow-lg border border-slate-200" align="end">
               <Calendar
                 initialFocus
                 mode="range"
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
-                onSelect={setDateRange}
+                onSelect={(range) => {
+                  setDateRange(range);
+                  setActivePreset("custom");
+                }}
                 numberOfMonths={2}
               />
             </PopoverContent>
           </Popover>
+
+          {dateRange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-slate-400 hover:text-slate-600"
+              onClick={() => handlePresetSelect("all")}
+              title="Reset date filter"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50 shadow-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-600" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 md:mb-8">
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-primary" />
+          <div className="flex items-center justify-between">
+            <span className="stat-label">Total Revenue</span>
+            <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <IndianRupee className="w-4 h-4" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Total Revenue</span>
           </div>
-          <p className="stat-value">₹{totalRevenue.toFixed(2)}</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="stat-value">₹{totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+            <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 inline" />
+            Net invoiced revenue in selected period
+          </p>
         </div>
 
         <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
-              <Receipt className="w-5 h-5 text-success" />
+          <div className="flex items-center justify-between">
+            <span className="stat-label">Total Invoices</span>
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+              <Receipt className="w-4 h-4" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Transactions</span>
           </div>
-          <p className="stat-value">{totalTransactions}</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="stat-value">{totalTransactions}</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Processed transactions</p>
         </div>
 
         <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-accent-foreground" />
+          <div className="flex items-center justify-between">
+            <span className="stat-label">Average Ticket Size</span>
+            <div className="w-9 h-9 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+              <TrendingUp className="w-4 h-4" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Avg. Transaction</span>
           </div>
-          <p className="stat-value">₹{avgTransactionValue.toFixed(2)}</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="stat-value">₹{avgTicket.toFixed(2)}</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Average invoice value</p>
         </div>
 
         <div className="stat-card">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-warning" />
+          <div className="flex items-center justify-between">
+            <span className="stat-label">Total GST Tax</span>
+            <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+              <IndianRupee className="w-4 h-4" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground">Total Tax (GST)</span>
           </div>
-          <p className="stat-value">₹{totalTax.toFixed(2)}</p>
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="stat-value">₹{totalGst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">CGST & SGST liability</p>
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Visual Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Sales Trend */}
-        <div className="table-container p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">Sales Trend</h3>
+        {/* Sales Trend Bar Chart */}
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Revenue Trend</h3>
+                <p className="text-xs text-slate-500">Daily gross sales volume</p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-medium text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+              Last {dailyData.length} active days
+            </span>
+          </div>
+
           {dailyData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              No sales data available
+            <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+              <BarChart3 className="w-10 h-10 mb-2 opacity-30 stroke-[1.5]" />
+              <p className="text-sm">No sales records for selected timeframe</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <BarChart data={dailyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  tickFormatter={(val) => {
+                    const parts = val.split("-");
+                    return `${parts[1]}/${parts[2]}`;
+                  }}
+                  axisLine={{ stroke: "#e2e8f0" }}
+                  tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  tickFormatter={(value) => `₹${value}`}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  tickFormatter={(val) => `₹${val}`}
+                  axisLine={{ stroke: "#e2e8f0" }}
+                  tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #e2e8f0",
                     borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                    fontSize: "12px",
                   }}
-                  formatter={(value: number) => [`₹${value.toFixed(2)}`, "Revenue"]}
+                  formatter={(val: number) => [`₹${val.toFixed(2)}`, "Revenue"]}
+                  labelFormatter={(lbl) => `Date: ${lbl}`}
                 />
-                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="total" fill="#4338ca" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* Sales by Category */}
-        <div className="table-container p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4">Sales by Category</h3>
+        {/* Sales by Category Donut Chart */}
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                <PieIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Sales by Category</h3>
+                <p className="text-xs text-slate-500">Product category revenue split</p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-medium text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+              {categoryData.length} categories
+            </span>
+          </div>
+
           {categoryData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              No category data available
+            <div className="h-64 flex flex-col items-center justify-center text-slate-400">
+              <PieIcon className="w-10 h-10 mb-2 opacity-30 stroke-[1.5]" />
+              <p className="text-sm">No category distribution available</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
@@ -227,86 +416,146 @@ const Reports: React.FC = () => {
                   data={categoryData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={2}
+                  innerRadius={65}
+                  outerRadius={95}
+                  paddingAngle={3}
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {categoryData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #e2e8f0",
                     borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                    fontSize: "12px",
                   }}
-                  formatter={(value: number) => [`₹${value}`, "Sales"]}
+                  formatter={(val: number) => [`₹${val.toLocaleString()}`, "Sales"]}
                 />
-                <Legend />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
               </PieChart>
             </ResponsiveContainer>
           )}
         </div>
       </div>
 
-      {/* Recent Sales Table */}
-      <div className="table-container table-scroll">
-        <div className="p-4 sm:p-5 border-b">
-          <h3 className="text-base sm:text-lg font-semibold text-foreground">Recent Transactions</h3>
+      {/* Transaction Details Ledger */}
+      <div className="table-container">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Report Invoices Breakdown</h3>
+            <p className="text-xs text-slate-500">Showing {displaySales.length} invoices matching active criteria</p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search invoice or customer..."
+              className="pl-9 h-9 text-xs bg-slate-50 border-slate-200 focus-visible:bg-white"
+            />
+          </div>
         </div>
-        <table className="w-full min-w-[640px]">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Invoice #</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden sm:table-cell">Date</th>
-              <th className="text-left p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Customer</th>
-              <th className="text-center p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden md:table-cell">Items</th>
-              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Subtotal</th>
-              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm hidden lg:table-cell">Tax</th>
-              <th className="text-right p-3 sm:p-4 font-semibold text-muted-foreground text-sm">Net Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {filteredSales.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No transactions found</p>
-                </td>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="p-3.5 pl-5">Invoice #</th>
+                <th className="p-3.5">Date</th>
+                <th className="p-3.5">Customer</th>
+                <th className="p-3.5 text-center">Items</th>
+                <th className="p-3.5 text-right">Taxable Subtotal</th>
+                <th className="p-3.5 text-right">GST Tax</th>
+                <th className="p-3.5 text-right">Total Amount</th>
+                <th className="p-3.5 text-center pr-5">Action</th>
               </tr>
-            ) : (
-              filteredSales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedSale(sale)}>
-                  <td className="p-3 sm:p-4 font-mono font-medium text-primary text-sm">{sale.invoiceNo}</td>
-                  <td className="p-3 sm:p-4 text-muted-foreground text-sm hidden sm:table-cell">{new Date(sale.date).toLocaleDateString()}</td>
-                  <td className="p-3 sm:p-4 font-medium text-sm">
-                    {sale.customerName}
-                    <p className="text-xs text-muted-foreground sm:hidden">{new Date(sale.date).toLocaleDateString()}</p>
-                  </td>
-                  <td className="p-3 sm:p-4 text-center hidden md:table-cell">{sale.items.length}</td>
-                  <td className="p-3 sm:p-4 text-right hidden lg:table-cell">₹{sale.subtotal.toFixed(2)}</td>
-                  <td className="p-3 sm:p-4 text-right text-muted-foreground hidden lg:table-cell">
-                    ₹{sale.tax.toFixed(2)}
-                  </td>
-                  <td className="p-3 sm:p-4 text-right font-bold">
-                    ₹{sale.total.toFixed(2)}
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {displaySales.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-12 text-center text-slate-400">
+                    <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30 stroke-[1.5]" />
+                    <p className="text-sm font-medium text-slate-600">No transactions found</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Try widening the date range or clear search</p>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                displaySales.map((sale) => (
+                  <tr
+                    key={sale.id}
+                    onClick={() => setSelectedSale(sale)}
+                    className="hover:bg-slate-50/60 cursor-pointer transition-colors"
+                  >
+                    <td className="p-3.5 pl-5 font-mono font-semibold text-indigo-600">
+                      {sale.invoiceNo}
+                    </td>
+                    <td className="p-3.5 text-slate-500">
+                      {new Date(sale.date).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="p-3.5">
+                      <div className="font-medium text-slate-900">{sale.customerName}</div>
+                      {sale.customerGstinNo && (
+                        <span className="text-[10px] font-mono text-slate-400">GSTIN: {sale.customerGstinNo}</span>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-center font-mono">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700">
+                        {sale.items.length} {sale.items.length === 1 ? "item" : "items"}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-right font-mono text-slate-600">
+                      ₹{sale.subtotal.toFixed(2)}
+                    </td>
+                    <td className="p-3.5 text-right font-mono text-slate-600">
+                      ₹{sale.tax.toFixed(2)}
+                    </td>
+                    <td className="p-3.5 text-right font-mono font-bold text-slate-900">
+                      ₹{sale.total.toFixed(2)}
+                    </td>
+                    <td className="p-3.5 text-center pr-5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2.5 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-medium"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSale(sale);
+                        }}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-      
+
+      {/* Invoice Viewer Modal */}
       {selectedSale && (
         <InvoiceDialog
           isOpen={true}
           onClose={() => setSelectedSale(null)}
-          customer={customers.find(c => c.id === selectedSale.customerId) || { name: selectedSale.customerName, dlNo: selectedSale.customerDlNo, gstinNo: selectedSale.customerGstinNo } as any}
+          customer={
+            customers.find((c) => c.id === selectedSale.customerId) ||
+            ({
+              name: selectedSale.customerName,
+              dlNo: selectedSale.customerDlNo,
+              gstinNo: selectedSale.customerGstinNo,
+            } as any)
+          }
           items={selectedSale.items as any}
           onUpdateItem={() => {}}
           onRemoveItem={() => {}}

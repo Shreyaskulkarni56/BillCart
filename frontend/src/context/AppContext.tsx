@@ -7,6 +7,7 @@ import {
 } from "../types";
 import { productApi, customerApi, saleApi, settingsApi } from "../services/api";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "./AuthContext";
 
 // ... existing code ... (ignoring this replace because I can just do it line by line)
 
@@ -47,10 +48,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [settings, setSettingsState] = useState<any>(null);
 
-  // Load initial data
+  const { token } = useAuth();
+
+  // Load initial data only when authenticated
   React.useEffect(() => {
-    fetchData();
-  }, []);
+    if (token) {
+      fetchData();
+    }
+  }, [token]);
 
   const fetchData = async () => {
     try {

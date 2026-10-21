@@ -1,9 +1,21 @@
 import axios from 'axios';
 import { Product, Customer, Sale, BillItem } from '../types';
 
-const API_URL =
+const rawUrl =
+  import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL || 
-  (import.meta.env.DEV ? '/api' : 'https://billcart.onrender.com/api');
+  (import.meta.env.DEV ? '/api' : 'https://billcart-backend.shreyaskulkarni051.workers.dev/api');
+
+// Normalize API URL to guarantee it ends with /api for absolute URLs
+const normalizeApiUrl = (url: string) => {
+  const trimmed = url.replace(/\/+$/, '');
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  }
+  return trimmed;
+};
+
+const API_URL = normalizeApiUrl(rawUrl);
 
 const api = axios.create({
     baseURL: API_URL,

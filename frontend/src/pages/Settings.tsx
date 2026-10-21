@@ -378,37 +378,37 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-sidebar-primary/10 via-primary/5 to-transparent p-6 rounded-2xl border border-sidebar-border/60">
+    <div className="page-container">
+      {/* Header */}
+      <div className="page-header">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">System Settings</h1>
-            <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 bg-emerald-500/10 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Protected Module
-            </Badge>
+            <h1 className="page-title">System Settings</h1>
+            <span className="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200">
+              <ShieldCheck className="w-3 h-3 text-indigo-600 inline mr-1" /> Enterprise Config
+            </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure business identity, invoice generation rules, payment gateways, and tax parameters.
+          <p className="page-subtitle">
+            Configure store identity, invoice templates, UPI & bank payment details, and GST taxation rules.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <Button variant="outline" size="sm" onClick={handleReset} type="button" className="gap-2">
-            <RotateCcw className="w-4 h-4" />
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleReset} type="button" className="h-9 gap-1.5 text-xs font-medium border-slate-200 bg-white shadow-xs">
+            <RotateCcw className="w-3.5 h-3.5" />
             Reset
           </Button>
           <Button
             size="sm"
             onClick={handleSubmit}
             disabled={isSaving}
-            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+            className="h-9 gap-1.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
           >
             {isSaving ? (
               "Saving..."
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" />
                 Save Changes
               </>
             )}
@@ -419,36 +419,36 @@ const Settings: React.FC = () => {
       {/* Main Settings Form with Tabs */}
       <form onSubmit={handleSubmit}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto p-1 bg-muted/80 rounded-xl gap-1">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto p-1.5 bg-slate-100 rounded-xl gap-1.5 border border-slate-200/80">
             <TabsTrigger
               value="business-profile"
-              className="flex items-center gap-2 py-3 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs text-slate-600 transition-all"
             >
-              <Building2 className="w-4 h-4 text-primary shrink-0" />
+              <Building2 className="w-4 h-4 shrink-0" />
               <span className="truncate">Business Profile</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="invoice-templates"
-              className="flex items-center gap-2 py-3 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs text-slate-600 transition-all"
             >
-              <Receipt className="w-4 h-4 text-primary shrink-0" />
+              <Receipt className="w-4 h-4 shrink-0" />
               <span className="truncate">Invoice Templates</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="payment-details"
-              className="flex items-center gap-2 py-3 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs text-slate-600 transition-all"
             >
-              <CreditCard className="w-4 h-4 text-primary shrink-0" />
+              <CreditCard className="w-4 h-4 shrink-0" />
               <span className="truncate">Payment Details</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="tax-gst"
-              className="flex items-center gap-2 py-3 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 px-3 text-xs md:text-sm font-medium rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs text-slate-600 transition-all"
             >
-              <Percent className="w-4 h-4 text-primary shrink-0" />
+              <Percent className="w-4 h-4 shrink-0" />
               <span className="truncate">Tax & GST</span>
             </TabsTrigger>
           </TabsList>
@@ -980,7 +980,7 @@ const Settings: React.FC = () => {
                     </div>
 
                     {/* Mockup Preview Graphic */}
-                    <div className="w-full h-36 bg-background rounded-xl border border-border p-3 space-y-2 shadow-inner overflow-hidden font-serif">
+                    <div className="w-full h-36 bg-background rounded-xl border border-border p-3 space-y-2 shadow-inner overflow-hidden font-sans">
                       <div className="border-b-2 border-foreground/80 pb-1 flex justify-between items-center">
                         <div className="text-[10px] font-bold tracking-wide uppercase text-foreground">LAKSHMI AYURVEDA</div>
                         <div className="text-[8px] text-muted-foreground font-sans">ORIGINAL TAX INVOICE</div>

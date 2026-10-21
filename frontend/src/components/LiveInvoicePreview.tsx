@@ -293,7 +293,7 @@ export const LiveInvoicePreview: React.FC<LiveInvoicePreviewProps> = ({ settings
   // Render Theme 2: PROFESSIONAL TEMPLATE
   if (theme === "professional" || theme === "standard") {
     return (
-      <div className={`w-full bg-background text-foreground rounded-xl border-2 shadow-md p-6 font-serif ${paperSize === "Thermal" ? "max-w-xs mx-auto p-4 text-xs" : ""}`} style={{ borderColor: primaryColor }}>
+      <div className={`w-full bg-background text-foreground rounded-xl border-2 shadow-md p-6 font-sans ${paperSize === "Thermal" ? "max-w-xs mx-auto p-4 text-xs" : ""}`} style={{ borderColor: primaryColor }}>
         {/* Corporate Double Line Header */}
         <div className="border-b-4 border-double pb-4 mb-4 flex justify-between items-start" style={{ borderColor: primaryColor }}>
           <div className={`flex gap-3 w-full ${getHeaderLayoutClasses()}`}>

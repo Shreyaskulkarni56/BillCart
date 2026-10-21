@@ -39,4 +39,4 @@ const CustomerSchema = new Schema<ICustomer>(
 
 CustomerSchema.index({ user: 1, phone: 1 }, { unique: true });
 
-export default mongoose.model<ICustomer>('Customer', CustomerSchema);
+export default (mongoose.models.Customer as mongoose.Model<ICustomer>) || mongoose.model<ICustomer>('Customer', CustomerSchema);

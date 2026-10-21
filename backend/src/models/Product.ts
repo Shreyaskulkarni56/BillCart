@@ -49,4 +49,4 @@ const ProductSchema = new Schema<IProduct>(
 
 ProductSchema.index({ user: 1, sku: 1 }, { unique: true });
 
-export default mongoose.model<IProduct>('Product', ProductSchema);
+export default (mongoose.models.Product as mongoose.Model<IProduct>) || mongoose.model<IProduct>('Product', ProductSchema);
