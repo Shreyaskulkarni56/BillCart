@@ -78,6 +78,9 @@ app.get('/', (req, res) => {
 
 // Ensure MongoDB is connected before handling API requests and teardown cleanly when request ends
 app.use('/api', async (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        return next();
+    }
     try {
         await connectDB();
 
