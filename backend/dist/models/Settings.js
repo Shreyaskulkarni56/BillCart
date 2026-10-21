@@ -84,6 +84,7 @@ const SettingsSchema = new mongoose_1.Schema({
     defaultHsn: { type: String, default: "30049011" }
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,

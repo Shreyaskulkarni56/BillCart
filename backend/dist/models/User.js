@@ -46,6 +46,7 @@ const UserSchema = new mongoose_1.Schema({
     phone: { type: String },
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,

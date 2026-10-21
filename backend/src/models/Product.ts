@@ -36,6 +36,7 @@ const ProductSchema = new Schema<IProduct>(
     },
     {
         timestamps: true,
+        autoIndex: false,
         toJSON: {
             virtuals: true,
             versionKey: false,

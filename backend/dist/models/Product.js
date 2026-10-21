@@ -50,6 +50,7 @@ const ProductSchema = new mongoose_1.Schema({
     expiryDate: { type: Date },
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,

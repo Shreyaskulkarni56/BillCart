@@ -22,6 +22,7 @@ const UserSchema = new Schema<IUser>(
     },
     {
         timestamps: true,
+        autoIndex: false,
         toJSON: {
             virtuals: true,
             versionKey: false,

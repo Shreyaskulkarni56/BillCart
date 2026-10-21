@@ -5,9 +5,14 @@ import Customer from '../models/Customer';
 export const getCustomers = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user!._id;
-        const customers = await Customer.find({ user: userId });
-        res.json(customers);
-    } catch (error) {
+        const customers = await Customer.find({ user: userId }).lean();
+        const formatted = customers.map((c: any) => ({
+            ...c,
+            id: c._id ? c._id.toString() : c.id,
+        }));
+        res.json(formatted);
+    } catch (error: any) {
+        console.error('[getCustomers] Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };
@@ -20,7 +25,8 @@ export const createCustomer = async (req: AuthRequest, res: Response) => {
             user: userId,
         });
         const createdCustomer = await customer.save();
-        res.status(201).json(createdCustomer);
+        const obj = createdCustomer.toObject ? createdCustomer.toObject() : createdCustomer;
+        res.status(201).json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
     } catch (error: any) {
         if (error.code === 11000) {
             res.status(400).json({ message: 'A customer with this phone number already exists in your records' });
@@ -37,7 +43,8 @@ export const updateCustomer = async (req: AuthRequest, res: Response) => {
         if (customer) {
             Object.assign(customer, req.body);
             const updatedCustomer = await customer.save();
-            res.json(updatedCustomer);
+            const obj = updatedCustomer.toObject ? updatedCustomer.toObject() : updatedCustomer;
+            res.json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
         } else {
             res.status(404).json({ message: 'Customer not found' });
         }

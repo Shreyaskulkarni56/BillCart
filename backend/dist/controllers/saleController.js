@@ -68,7 +68,8 @@ const createSale = async (req, res) => {
         await customer.save();
         // 5. Send Email
         await (0, emailService_1.sendInvoiceEmail)(createdSale, customer);
-        res.status(201).json(createdSale);
+        const obj = createdSale.toObject ? createdSale.toObject() : createdSale;
+        res.status(201).json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
     }
     catch (error) {
         res.status(400).json({ message: error.message });
@@ -78,8 +79,12 @@ exports.createSale = createSale;
 const getSales = async (req, res) => {
     try {
         const userId = req.user._id;
-        const sales = await Sale_1.default.find({ user: userId }).sort({ date: -1 });
-        res.json(sales);
+        const sales = await Sale_1.default.find({ user: userId }).sort({ date: -1 }).lean();
+        const formatted = sales.map((s) => ({
+            ...s,
+            id: s._id ? s._id.toString() : s.id,
+        }));
+        res.json(formatted);
     }
     catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -89,9 +94,13 @@ exports.getSales = getSales;
 const getSaleById = async (req, res) => {
     try {
         const userId = req.user._id;
-        const sale = await Sale_1.default.findOne({ _id: req.params.id, user: userId });
+        const sale = await Sale_1.default.findOne({ _id: req.params.id, user: userId }).lean();
         if (sale) {
-            res.json(sale);
+            const formatted = {
+                ...sale,
+                id: sale._id ? sale._id.toString() : sale.id,
+            };
+            res.json(formatted);
         }
         else {
             res.status(404).json({ message: 'Sale not found' });
@@ -112,8 +121,12 @@ const getTodaysSales = async (req, res) => {
         const sales = await Sale_1.default.find({
             user: userId,
             date: { $gte: startOfDay, $lte: endOfDay },
-        });
-        res.json(sales);
+        }).lean();
+        const formatted = sales.map((s) => ({
+            ...s,
+            id: s._id ? s._id.toString() : s.id,
+        }));
+        res.json(formatted);
     }
     catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -130,7 +143,8 @@ const updateSale = async (req, res) => {
                 sale.date = new Date(date);
             }
             const updatedSale = await sale.save();
-            res.json(updatedSale);
+            const obj = updatedSale.toObject ? updatedSale.toObject() : updatedSale;
+            res.json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
         }
         else {
             res.status(404).json({ message: 'Sale not found' });

@@ -45,6 +45,7 @@ const CustomerSchema = new mongoose_1.Schema({
     totalPurchases: { type: Number, default: 0 },
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,

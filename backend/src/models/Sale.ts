@@ -57,6 +57,7 @@ const SaleSchema = new Schema<ISale>(
     },
     {
         timestamps: true,
+        autoIndex: false,
         toJSON: {
             virtuals: true,
             versionKey: false,

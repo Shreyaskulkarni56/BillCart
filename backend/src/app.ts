@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import connectDB, { disconnectDB } from './config/db';
+import connectDB, { requestStarted, requestFinished } from './config/db';
 
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
@@ -11,9 +11,26 @@ import settingsRoutes from './routes/settingsRoutes';
 
 const app = express();
 
-// Middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// 1. Guaranteed Universal CORS headers & instant OPTIONS preflight handler
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range');
+    res.setHeader('Access-Control-Max-Age', '86400');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+    }
+    next();
+});
 
 // Configure Helmet with permissive cross-origin policies for external frontend integration
 app.use(
@@ -23,46 +40,23 @@ app.use(
     })
 );
 
-// Allowed origins check including Vercel production and preview deployments
-const isAllowedOrigin = (origin: string | undefined): boolean => {
-    if (!origin) return true;
-    try {
-        const hostname = new URL(origin).hostname;
-        if (hostname === 'bill-cart.vercel.app' || hostname === 'billcart.vercel.app') {
-            return true;
-        }
-        if (hostname.endsWith('.vercel.app')) {
-            return true;
-        }
-        if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            return true;
-        }
-    } catch {
-        // If origin cannot be parsed as a URL, allow it
-    }
-    return true;
-};
+// Body Parsing Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-const corsOptions: cors.CorsOptions = {
-    origin: (origin, callback) => {
-        if (isAllowedOrigin(origin)) {
-            callback(null, true);
-        } else {
-            callback(null, false);
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 86400,
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-// Safe request logging compatible with Cloudflare Workers (replaces morgan's new Function compilation)
+// Safe request logging & isolate lifecycle tracking compatible with Cloudflare Workers
 app.use((req, res, next) => {
+    requestStarted();
+    let ended = false;
+    const onEnd = () => {
+        if (!ended) {
+            ended = true;
+            requestFinished();
+        }
+    };
+    res.on('finish', onEnd);
+    res.on('close', onEnd);
+
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
@@ -76,25 +70,12 @@ app.get('/', (req, res) => {
     res.send('API is running...');
 });
 
-// Ensure MongoDB is connected before handling API requests and teardown cleanly when request ends
+// Ensure MongoDB is connected before handling API requests
 app.use('/api', async (req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        return next();
-    }
+    console.log('[api-middleware]', req.method, req.originalUrl, 'entering connectDB');
     try {
         await connectDB();
-
-        let cleanedUp = false;
-        const cleanup = () => {
-            if (!cleanedUp) {
-                cleanedUp = true;
-                disconnectDB().catch(() => {});
-            }
-        };
-
-        res.on('finish', cleanup);
-        res.on('close', cleanup);
-
+        console.log('[api-middleware]', req.method, req.originalUrl, 'connectDB done, calling next()');
         next();
     } catch (err: any) {
         console.error('Database connection error in request middleware:', err);
@@ -111,5 +92,18 @@ app.use('/api/products', productRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/settings', settingsRoutes);
+
+// Global error handler ensuring CORS headers are always retained
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled server error:', err);
+    const origin = req.headers.origin;
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(err.status || 500).json({
+        message: err.message || 'Server Error'
+    });
+});
 
 export default app;

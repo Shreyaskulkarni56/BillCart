@@ -6,11 +6,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeLogo = exports.uploadLogo = exports.updateSettings = exports.getSettings = void 0;
 const Settings_1 = __importDefault(require("../models/Settings"));
 const getSettings = async (req, res) => {
+    console.log('[getSettings] 1. Entered');
     try {
         const userId = req.user._id;
-        let settings = await Settings_1.default.findOne({ user: userId });
+        console.log('[getSettings] 2. User ID:', userId);
+        let settings = await Settings_1.default.findOne({ user: userId }).lean();
+        console.log('[getSettings] 3. Found settings:', !!settings);
         if (!settings) {
-            settings = new Settings_1.default({
+            console.log('[getSettings] Creating default settings');
+            const newSettings = new Settings_1.default({
                 user: userId,
                 shopName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors",
                 companyName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors Pvt Ltd",
@@ -46,11 +50,19 @@ const getSettings = async (req, res) => {
                 showQrCode: true,
                 acceptedPaymentMethods: ["Cash", "UPI", "Card", "Net Banking"]
             });
-            await settings.save();
+            const saved = await newSettings.save();
+            const obj = saved.toObject ? saved.toObject() : saved;
+            return res.json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
         }
-        res.json(settings);
+        const formatted = {
+            ...settings,
+            id: settings._id ? settings._id.toString() : settings.id,
+        };
+        console.log('[getSettings] 4. Sending res.json');
+        res.json(formatted);
     }
     catch (error) {
+        console.error('[getSettings] Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };

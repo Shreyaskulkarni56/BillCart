@@ -8,10 +8,15 @@ const Customer_1 = __importDefault(require("../models/Customer"));
 const getCustomers = async (req, res) => {
     try {
         const userId = req.user._id;
-        const customers = await Customer_1.default.find({ user: userId });
-        res.json(customers);
+        const customers = await Customer_1.default.find({ user: userId }).lean();
+        const formatted = customers.map((c) => ({
+            ...c,
+            id: c._id ? c._id.toString() : c.id,
+        }));
+        res.json(formatted);
     }
     catch (error) {
+        console.error('[getCustomers] Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };
@@ -24,7 +29,8 @@ const createCustomer = async (req, res) => {
             user: userId,
         });
         const createdCustomer = await customer.save();
-        res.status(201).json(createdCustomer);
+        const obj = createdCustomer.toObject ? createdCustomer.toObject() : createdCustomer;
+        res.status(201).json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
     }
     catch (error) {
         if (error.code === 11000) {
@@ -43,7 +49,8 @@ const updateCustomer = async (req, res) => {
         if (customer) {
             Object.assign(customer, req.body);
             const updatedCustomer = await customer.save();
-            res.json(updatedCustomer);
+            const obj = updatedCustomer.toObject ? updatedCustomer.toObject() : updatedCustomer;
+            res.json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
         }
         else {
             res.status(404).json({ message: 'Customer not found' });

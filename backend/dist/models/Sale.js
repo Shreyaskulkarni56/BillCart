@@ -60,6 +60,7 @@ const SaleSchema = new mongoose_1.Schema({
     items: [SaleItemSchema],
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,

@@ -3,12 +3,16 @@ import { AuthRequest } from '../middleware/authMiddleware';
 import Settings from '../models/Settings';
 
 export const getSettings = async (req: AuthRequest, res: Response) => {
+    console.log('[getSettings] 1. Entered');
     try {
         const userId = req.user!._id;
-        let settings = await Settings.findOne({ user: userId });
+        console.log('[getSettings] 2. User ID:', userId);
+        let settings = await Settings.findOne({ user: userId }).lean();
+        console.log('[getSettings] 3. Found settings:', !!settings);
         
         if (!settings) {
-            settings = new Settings({
+            console.log('[getSettings] Creating default settings');
+            const newSettings = new Settings({
                 user: userId,
                 shopName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors",
                 companyName: req.user?.shopName || "LAKSHMI AYURVEDA Distributors Pvt Ltd",
@@ -47,11 +51,19 @@ export const getSettings = async (req: AuthRequest, res: Response) => {
                 showQrCode: true,
                 acceptedPaymentMethods: ["Cash", "UPI", "Card", "Net Banking"]
             });
-            await settings.save();
+            const saved = await newSettings.save();
+            const obj = saved.toObject ? saved.toObject() : saved;
+            return res.json({ ...obj, id: obj._id ? obj._id.toString() : obj.id });
         }
         
-        res.json(settings);
-    } catch (error) {
+        const formatted = {
+            ...settings,
+            id: (settings as any)._id ? (settings as any)._id.toString() : (settings as any).id,
+        };
+        console.log('[getSettings] 4. Sending res.json');
+        res.json(formatted);
+    } catch (error: any) {
+        console.error('[getSettings] Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };

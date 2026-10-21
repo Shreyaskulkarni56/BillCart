@@ -106,6 +106,7 @@ const SettingsSchema = new Schema<ISettings>({
     defaultHsn: { type: String, default: "30049011" }
 }, {
     timestamps: true,
+    autoIndex: false,
     toJSON: {
         virtuals: true,
         versionKey: false,
